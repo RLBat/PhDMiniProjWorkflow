@@ -18,8 +18,10 @@ Assess_Clean <- function(Species_History){
   Species_History <- Species_History %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
 }
 
-Fix_Nongen_Assess <- function(){
-  # read in csv
-  changes2017 <- read.csv("../Data/2017_3_RL_Stats_Table_7.csv", header=TRUE)
+# read in csv
+#Table7 <- read.csv("../Data/Table7.csv", header=TRUE)
+
+Fix_Nongen_Assess <- function(Table7){
+  
 }
 
