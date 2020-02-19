@@ -14,12 +14,26 @@ Species_Info_Collect()
 # Collect historical assessment data for each species
 Species_History_Collect()
 
-# Collect various metadata including criteria and date of most recent assessment and habitat information.
-Species_Meta_Collect()
-
 ##### DATA PROCESSING #####
 
 source("Data_Processing.R")
 
 # Does initial data cleaning, removing invalid or unusable assessments
 Assess_Clean()
+
+# Assigns every assessment a genuine or non-genuine tag
+Fix_Nongen_Assess()
+
+##### ADDITIONAL DATA COLLECTION #####
+
+# This additional data collection step post-processing should be 
+# faster due to species being removed than if it was done pre-processing
+
+# Collect various metadata including criteria and date of most recent assessment and habitat information.
+Species_Meta_Collect()
+
+# Collect threat data on each species
+Species_Threat_Collect()
+
+##### MODELLING #####
+
