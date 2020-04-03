@@ -135,7 +135,7 @@ Species_Threat_Collect <- function(API_key=API_key, Species_IDs = Species_Data$t
     Species_Threats <- as.data.frame(rl_threats(id=Species_IDs[1], key=API_key))
   }
   # Run for the rest of the species.
-  for (i in 2:length(Species_IDs)){
+  for (i in start_ID:length(Species_IDs)){
     # Fetches the next species info and adds it to the master df
     Species_iter <- rl_threats(id=Species_IDs[i], key=API_key)
     if (class(Species_iter$result) == "data.frame"){
@@ -154,7 +154,10 @@ Species_Threat_Collect <- function(API_key=API_key, Species_IDs = Species_Data$t
   return(Species_Meta)
 }
 
+Species_Threats <- read.csv("../Data/Species_Threats.csv", header = T)
+Species_Data <- read.csv("../Data/Species_Data.csv", header=T)
 
+Species_IDs = Species_Data$taxonid
+start_ID <- which(Species_Data$taxonid==Species_Threats$id[nrow(Species_Threats)])+1
 
-
-
+write.csv(Species_Threats, "../Data/Species_Threats_4.csv", row.names = F)
