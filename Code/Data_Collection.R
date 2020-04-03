@@ -105,6 +105,8 @@ Species_History_Collect <- function(API_key, Search_type = "ID", Species_IDs = S
   return(c(Species_History, Excluded_Species))
 }
 
+
+
 # Gathers meta information including criteria, assessment date, pop. trend, and habitat info.
 Species_Meta_Collect <- function(API_key=API_key, Species_IDs = Species_Data$taxonid, start_ID = 2){
   # Get the metadata for the first species to initialise the master list if no list already exists
@@ -127,6 +129,9 @@ Species_Meta_Collect <- function(API_key=API_key, Species_IDs = Species_Data$tax
   }
   return(Species_Meta)
 }
+
+#checkpoint
+iter = 101639
 
 # Gathers threat information for each species
 Species_Threat_Collect <- function(API_key=API_key, Species_IDs = Species_Data$taxonid){
@@ -151,7 +156,7 @@ Species_Threat_Collect <- function(API_key=API_key, Species_IDs = Species_Data$t
       }
     }
   }
-  return(Species_Meta)
+  return(Species_Threats)
 }
 
 Species_Threats <- read.csv("../Data/Species_Threats.csv", header = T)
