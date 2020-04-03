@@ -8,7 +8,7 @@ require(dplyr)
 ##### https://www.iucnredlist.org/resources/summary-statistics only available as a pdf
 ## Used a free online tool to convert them to csv
 
-col_names <- c("Scientific_Name", "Common_Name", "Previous_Category", "New_Category", "Reason_For_Change", "Year")
+col_names <- c("scientific_name", "common_name", "previous_category", "new_category", "reason_for_change", "year")
 
 ## Read in the table 7 docs
 
@@ -58,6 +58,6 @@ Table7 <- Table7[complete.cases(Table7[,c(1,3:6)]),]
 table(Table7$Previous_Category)
 Table7 <- dplyr::filter(Table7, Previous_Category != "(2007)" & Previous_Category != "(2008)")
 
-write.csv(Table7, "../Data/Table7.csv")
+write.csv(Table7, "../Data/Table7.csv", row.names = FALSE)
 
 #############################################################
