@@ -79,11 +79,18 @@ Assign_tags <- function(Cat_Changes, Species_History){
   # Remove the column used to transfer the tags
   Species_History$reason_for_change <- NULL
   # Assign True tags where the assessment has been the same twice in a row
-  test <- Species_History %>% group_by(taxonid) %>% group_map(~ Same_cat_tag(.x))
+  Same_tags <- Species_History[NULL,]
+  for (i in unique(Species_History$taxonid)){
+    individual_history <- Species_History[Species_History$taxonid==i,]
+    Same_tags <- rbind(Same_tags ,Same_cat_tag(individual_history))
+  }
+  Species_History <- Same_tags
+  return(Species_History)
 }
 
+Spceies_History <- Assign_tags(Cat_Changes, Species_History)
 
-test_2 <- Species_History[Species_History$taxonid==139,]
-Same_cat_tag(test_2)
+
+
 
 
