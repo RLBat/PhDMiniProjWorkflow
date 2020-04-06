@@ -159,10 +159,15 @@ Species_Threat_Collect <- function(API_key=API_key, Species_IDs = Species_Data$t
   return(Species_Threats)
 }
 
+#setwd("B:/OneDrive/Documents/Uni/PhD/PhDMiniProjWorkflow/Code")
+
+API_key = "0b523051c1b5ba7411eb30c4bfb357cd587329c39c745c135f30167f7d53f02b"
+
 Species_Threats <- read.csv("../Data/Species_Threats.csv", header = T)
 Species_Data <- read.csv("../Data/Species_Data.csv", header=T)
 
 Species_IDs = Species_Data$taxonid
 start_ID <- which(Species_Data$taxonid==Species_Threats$id[nrow(Species_Threats)])+1
+start_ID <- i
 
-write.csv(Species_Threats, "../Data/Species_Threats_4.csv", row.names = F)
+write.csv(Species_Threats, "../Data/Species_Threats_7.csv", row.names = F)
