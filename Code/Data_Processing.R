@@ -90,6 +90,8 @@ Assign_tags <- function(Cat_Changes, Species_History){
 
 Spceies_History <- Assign_tags(Cat_Changes, Species_History)
 
+# checkpoint
+# write.csv(Species_History, "../Data/SpeciesHistory_Tags.csv", row.names = FALSE)
 
 
 
