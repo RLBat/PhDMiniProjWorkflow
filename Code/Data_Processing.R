@@ -11,7 +11,12 @@ Assess_Clean <- function(Species_History){
   Species_History <- subset(Species_History, Species_History$year >= 1994)
   # Select which codes to remove    
   lose_codes <- c("I","NR","K", "R", "CT")
+  # Remove those codes
   Species_History <- dplyr::filter(Species_History, !Species_History$category %in% lose_codes)
+  # Now rename codes where they have several names
+  ## Make a dictionary e.g. EX:{EX, Ex, Ex?} to use to replace
+  
+  
   # Generate a df of only the years with two assessments
   Duplicates <- Species_History %>% group_by(taxonid) %>% filter(duplicated(year)|duplicated(year, fromLast=TRUE))
   # Remove these assessments as there is no way to know which order they were in
@@ -25,7 +30,7 @@ Assess_Clean <- function(Species_History){
 }
 
 # read in csv
-Table7 <- read.csv("../Data/Table7.csv", header=TRUE)
+Table7 <- read.csv("../Data/Table7.csv", header=TRUE, stringsAsFactors = FALSE)
 
 Species_History <- Assess_Clean(Species_History)
 
@@ -35,6 +40,7 @@ Add_table7_tags <- function(Table7, Species_History){
   Species_History$scientific_name <- as.character(Species_History$scientific_name)
   Table7$scientific_name <- as.character(Table7$scientific_name)
   # Make a df of all assessment changes contained in Table 7
+  ## This removes all species that have changed name
   Cat_Changes <- inner_join(Species_History, Table7[,c(1,3:6)], by = c("scientific_name", "year"))
   # Cooerce to character
   Cat_Changes$category <- as.character(Cat_Changes$category)
@@ -45,12 +51,15 @@ Add_table7_tags <- function(Table7, Species_History){
   test2 <- Cat_Changes %>% filter(row_ID %in% check$row_ID)# 10 that don't line up for no obvious reason
   # Remove those, assume clerical error
   Cat_Changes <- Cat_Changes %>% filter(!row_ID %in% check$row_ID)
+  # Remove any non True/False reasons (E seems to stick around for some)
+  Cat_Changes <- Cat_Changes[Cat_Changes$reason_for_change=="N"|Cat_Changes$reason_for_change=="G",]
   return(Cat_Changes)
 }
 
 Cat_Changes <- Add_table7_tags(Table7, Species_History)
 
 Same_cat_tag <- function(group_df){
+  # Function to identify where two assignments in a row are the same and mark the older one as true
   for (i in 2:nrow(group_df)){
     if (group_df$category[i] == group_df$category[i-1]){
       group_df$Verified[i] <- "True"
@@ -83,10 +92,6 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
   }
   
   Species_History <- groupwise_df
-  
-  # Assign all most recent changes as unknown
-  #Species_History <- Species_History %>% group_by(taxonid) %>% mutate(Verified=(ifelse(year==max(year),"Unknown",NA))) %>% ungroup
-  
   # Create a reference df
   Reference <- Cat_Changes[,c("row_ID", "reason_for_change")]
   Reference$reason_for_change <- recode(Reference$reason_for_change, N = "False", G = "True")
@@ -98,10 +103,10 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
   Species_History$Verified[x] <- as.character(Species_History$reason_for_change[x])
   # Remove the column used to transfer the tags
   Species_History$reason_for_change <- NULL
-  # Assign False tags to all DD assessments
-  Species_History$Verified[which(Species_History$category=="DD")] <- "False"
+  # Assign False tags to all DD assessments (shouldn't need but just in case)
+  Species_History$Verified[which(Species_History$category=="DD")] <- "False" 
+  # Assign unknown values to all other assessments
   Species_History$Verified[which(is.na(Species_History$Verified))] <- "Unknown"
-  ## Need to assign any that are pre-DD as False
   return(Species_History)
 }
 
@@ -109,7 +114,7 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
 
 # checkpoint
 # write.csv(Species_History, "../Data/SpeciesHistory_Tags.csv", row.names = FALSE)
-Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
+#Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
 
 Prob_True = length(which(Species_History$Verified=="True"))/length(which(Species_History$Verified=="True"|Species_History$Verified=="False"))
 
