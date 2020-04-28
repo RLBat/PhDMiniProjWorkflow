@@ -55,8 +55,8 @@ Table7[Table7==""] <- NA
 Table7 <- Table7[complete.cases(Table7[,c(1,3:6)]),]
 
 ## Check for and remove erroneous rows
-table(Table7$Previous_Category)
-Table7 <- dplyr::filter(Table7, Previous_Category != "(2007)" & Previous_Category != "(2008)")
+table(Table7$previous_category)
+Table7 <- dplyr::filter(Table7, previous_category != "(2007)" & previous_category != "(2008)")
 
 write.csv(Table7, "../Data/Table7.csv", row.names = FALSE)
 
