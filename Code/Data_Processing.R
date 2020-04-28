@@ -62,11 +62,31 @@ Same_cat_tag <- function(group_df){
 }
 
 
-Assign_tags <- function(Cat_Changes, Species_History){
+Assign_known_tags <- function(Cat_Changes, Species_History){
   # Use Cat_changes to assign tags where we can, need to accces both assessments where a change has happened
   Species_History$Verified <- NA
+  # Do any changes that need to be done groupwise
+  groupwise_df <- Species_History[NULL,]
+  for (i in unique(Species_History$taxonid)){
+    # subset to species
+    species <- Species_History[(Species_History$taxonid == i),]
+    # tag the newest entry as unknown
+    species[(species$year==max(species$year)),]$Verified <- "Unknown"
+    # Assign True tags where the assessment has been the same twice in a row
+    species <- Same_cat_tag(species)
+    # work out which years had DD classifications
+    DD_years <- which(species$category=="DD")
+    # Assign from the DDyears backwards as false
+    species[min(DD_years):nrow(species),]$Verified <- "False"
+    # Save to df
+    groupwise_df <- rbind(groupwise_df, species)
+  }
+  
+  Species_History <- groupwise_df
+  
   # Assign all most recent changes as unknown
-  Species_History <- Species_History %>% group_by(taxonid) %>% mutate(Verified=(ifelse(year==max(year),"Unknown",NA))) %>% ungroup
+  #Species_History <- Species_History %>% group_by(taxonid) %>% mutate(Verified=(ifelse(year==max(year),"Unknown",NA))) %>% ungroup
+  
   # Create a reference df
   Reference <- Cat_Changes[,c("row_ID", "reason_for_change")]
   Reference$reason_for_change <- recode(Reference$reason_for_change, N = "False", G = "True")
@@ -78,21 +98,29 @@ Assign_tags <- function(Cat_Changes, Species_History){
   Species_History$Verified[x] <- as.character(Species_History$reason_for_change[x])
   # Remove the column used to transfer the tags
   Species_History$reason_for_change <- NULL
-  # Assign True tags where the assessment has been the same twice in a row
-  Same_tags <- Species_History[NULL,]
-  for (i in unique(Species_History$taxonid)){
-    individual_history <- Species_History[Species_History$taxonid==i,]
-    Same_tags <- rbind(Same_tags ,Same_cat_tag(individual_history))
-  }
-  Species_History <- Same_tags
+  # Assign False tags to all DD assessments
+  Species_History$Verified[which(Species_History$category=="DD")] <- "False"
+  Species_History$Verified[which(is.na(Species_History$Verified))] <- "Unknown"
+  ## Need to assign any that are pre-DD as False
   return(Species_History)
 }
 
-Spceies_History <- Assign_tags(Cat_Changes, Species_History)
+#Spceies_History <- Assign_known_tags(Cat_Changes, Species_History)
 
 # checkpoint
 # write.csv(Species_History, "../Data/SpeciesHistory_Tags.csv", row.names = FALSE)
+Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
 
+Prob_True = length(which(Species_History$Verified=="True"))/length(which(Species_History$Verified=="True"|Species_History$Verified=="False"))
 
+Generate_tags <- function(Species_History, Prob_True){
+  Undefined_assess <- which(Species_History$Verified=="Unknown")
+  Tag <- sample(c("True","False"), size=length(Undefined_assess), replace=TRUE, prob=c(Prob_True, 1-Prob_True))
+  Species_History$Verified[Undefined_assess] <- Tag
+  return(Species_History)
+}
 
+Reassign_Cats <- function(Species_History){
+  
+}
 
