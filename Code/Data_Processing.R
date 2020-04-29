@@ -170,8 +170,6 @@ Reassign_Cats <- function(Species_History_Tags){
               # Give assessment the same catetgory as the following.
               species$category[j] <- species$category[j-1]
               species$Verified[j] <- "Corrected"
-            } else {
-              species$Verified[j] <- "Unusable"
             }
           #### Might remove this bit. Unsure.
           } else if (species$Verified[j-1]=="Corrected"){
@@ -183,14 +181,8 @@ Reassign_Cats <- function(Species_History_Tags){
             if (species$year[True_assess]-species$year[j]<=5){
               species$category[j] <- species$category[True_assess]
               species$Verified[j] <- "Corrected"
-            } else {
-              species$Verified[j] <- "Unusable"
             }
-          } else {
-            species$Verified[j] <- "Unusable"
           }
-        } else {
-          species$Verified[j] <- "Unusable"
         }
       }
       Corrected_cats <- rbind(Corrected_cats, species)
@@ -199,8 +191,16 @@ Reassign_Cats <- function(Species_History_Tags){
       Corrected_cats <- rbind(Corrected_cats, species)
     }
   }
+  # Any remaining as false must not meet the criteria so should be dropped
+  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
+  False_rem <- nrow(Species_History_Tags)-nrow(Corrected_cats)
+  paste("False assessments removed: ", False_rem, sep="")
+  # Remove species with only one assessment remaining
+  Corrected_cats <- Corrected_cats %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
+  paste("Species with only one assessment remaining removed: ", (nrow(Species_History_Tags)-nrow(Corrected_cats))-False_rem, sep="")
   return(Corrected_cats)
 }
 
-# Corrected_cats <- Reassign_Cats(Species_History_Tags)
+Corrected_cats <- Reassign_Cats(Species_History_Tags)
 
+write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory.csv", row.names = FALSE)
