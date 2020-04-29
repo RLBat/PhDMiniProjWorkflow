@@ -10,13 +10,11 @@ Assess_Clean <- function(Species_History){
   # Remove all pre 1994 listings as that is when the current system was implemented
   Species_History <- subset(Species_History, Species_History$year >= 1994)
   # Select which codes to remove    
-  lose_codes <- c("I","NR","K", "R", "CT")
+  lose_codes <- c("I","NR","K", "R", "CT", "E", "V", "nt", "Ex/E")
   # Remove those codes
   Species_History <- dplyr::filter(Species_History, !Species_History$category %in% lose_codes)
   # Now rename codes where they have several names
-  ## Make a dictionary e.g. EX:{EX, Ex, Ex?} to use to replace
-  
-  
+  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "Ex?" = "EX", "EW" = "EX", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT")
   # Generate a df of only the years with two assessments
   Duplicates <- Species_History %>% group_by(taxonid) %>% filter(duplicated(year)|duplicated(year, fromLast=TRUE))
   # Remove these assessments as there is no way to know which order they were in
@@ -85,12 +83,13 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
     species <- Same_cat_tag(species)
     # work out which years had DD classifications
     DD_years <- which(species$category=="DD")
-    # Assign from the DDyears backwards as false
-    species[min(DD_years):nrow(species),]$Verified <- "False"
+    if (length(DD_years)>=1){
+      # Assign from the DDyears backwards as false
+      species[min(DD_years):nrow(species),]$Verified <- "False"
+    }
     # Save to df
     groupwise_df <- rbind(groupwise_df, species)
   }
-  
   Species_History <- groupwise_df
   # Create a reference df
   Reference <- Cat_Changes[,c("row_ID", "reason_for_change")]
@@ -110,22 +109,98 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
   return(Species_History)
 }
 
-#Spceies_History <- Assign_known_tags(Cat_Changes, Species_History)
+Species_History <- Assign_known_tags(Cat_Changes, Species_History)
 
 # checkpoint
 # write.csv(Species_History, "../Data/SpeciesHistory_Tags.csv", row.names = FALSE)
 #Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
 
-Prob_True = length(which(Species_History$Verified=="True"))/length(which(Species_History$Verified=="True"|Species_History$Verified=="False"))
 
-Generate_tags <- function(Species_History, Prob_True){
-  Undefined_assess <- which(Species_History$Verified=="Unknown")
-  Tag <- sample(c("True","False"), size=length(Undefined_assess), replace=TRUE, prob=c(Prob_True, 1-Prob_True))
-  Species_History$Verified[Undefined_assess] <- Tag
+Define_probabilities <- function(Species_History){
+  # Probability of a change being true by cat # Very different! LC and EX are much more likely to be true
+  Categories <- c("LC", "NT", "VU", "EN", "CR", "EX")
+  Cat_probs <- c(rep(NA, length(Categories)))
+  names(Cat_probs) <- Categories
+  # Works out the prop(true) for each cat and assigns to named list
+  for (i in Categories){
+    Cat_subset <- Species_History[which(Species_History$category==i & Species_History$Verified!= "Unknown"),]
+    Cat_probs[[i]] <- length(which(Cat_subset$Verified=="True"))/nrow(Cat_subset)
+  }
+  return(Cat_probs)
+}
+
+Cat_probs <- Define_probabilities(Species_History)
+
+
+Generate_tags <- function(Species_History, Cat_probs){
+  # Randomly assigns T/F to unknown assessments based on category probabilities
+  Categories <- c("LC", "NT", "VU", "EN", "CR", "EX")  
+  for (i in Categories){
+    # Finds the index values of all unknown assesments fora category
+    Cat_unknown <- which(Species_History$category==i & Species_History$Verified=="Unknown")
+    # Samples T/F based on the probability for that category
+    Tags <- sample(c("True","False"), size=length(Cat_unknown), replace=TRUE, prob=c(Cat_probs[[i]], 1-Cat_probs[[i]]))
+    # Places the T/F values where the unknown ones are
+    Species_History$Verified[Cat_unknown] <- Tags
+  }
   return(Species_History)
 }
 
-Reassign_Cats <- function(Species_History){
-  
+# Will want to make this so it runs x times
+# e.g. Species_History_1 <- replicate(3, Generate_tags(Species_History, Cat_probs))
+
+# Use different name to preserve the original df pre-random assignment
+Species_History_Tags <- Generate_tags(Species_History, Cat_probs)
+
+Reassign_Cats <- function(Species_History_Tags){
+  # Works out where/how to change any assessments labelled as false
+  Corrected_cats <- Species_History_Tags[NULL,]
+  # Splits by taxa
+  for (i in unique(Species_History_Tags$taxonid)){
+    species <- Species_History_Tags[Species_History_Tags$taxonid==i,]
+    # Gets the index values of false assessments
+    False_assess <- which(species$Verified=="False")
+    if (length(False_assess)>0){
+      for (j in False_assess){ # for each false assessment
+        if (j > 1){
+          # If the following assessment was true
+          if (species$Verified[j-1]=="True"){
+            # If the following assessment happened within 5 years
+            if (species$year[j-1]-species$year[j]<=5){
+              # Give assessment the same catetgory as the following.
+              species$category[j] <- species$category[j-1]
+              species$Verified[j] <- "Corrected"
+            } else {
+              species$Verified[j] <- "Unusable"
+            }
+          #### Might remove this bit. Unsure.
+          } else if (species$Verified[j-1]=="Corrected"){
+            # Find the subsequent true assessment to compare dates
+            True_assess <- which(species$Verified=="True")
+            True_assess <- subset(True_assess, True_assess<j)
+            True_assess <- max(True_assess)
+            # If the next true assessment happened within 5 years, copy category
+            if (species$year[True_assess]-species$year[j]<=5){
+              species$category[j] <- species$category[True_assess]
+              species$Verified[j] <- "Corrected"
+            } else {
+              species$Verified[j] <- "Unusable"
+            }
+          } else {
+            species$Verified[j] <- "Unusable"
+          }
+        } else {
+          species$Verified[j] <- "Unusable"
+        }
+      }
+      Corrected_cats <- rbind(Corrected_cats, species)
+    } else {
+      # Skips cat if there's no false assessments in it
+      Corrected_cats <- rbind(Corrected_cats, species)
+    }
+  }
+  return(Corrected_cats)
 }
+
+# Corrected_cats <- Reassign_Cats(Species_History_Tags)
 
