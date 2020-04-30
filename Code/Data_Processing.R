@@ -191,16 +191,50 @@ Reassign_Cats <- function(Species_History_Tags){
       Corrected_cats <- rbind(Corrected_cats, species)
     }
   }
-  # Any remaining as false must not meet the criteria so should be dropped
-  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
-  False_rem <- nrow(Species_History_Tags)-nrow(Corrected_cats)
-  paste("False assessments removed: ", False_rem, sep="")
-  # Remove species with only one assessment remaining
-  Corrected_cats <- Corrected_cats %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
-  paste("Species with only one assessment remaining removed: ", (nrow(Species_History_Tags)-nrow(Corrected_cats))-False_rem, sep="")
   return(Corrected_cats)
 }
 
 Corrected_cats <- Reassign_Cats(Species_History_Tags)
 
+Final_clean <- function(Corrected_cats){
+  # Any remaining as false must not meet the criteria so should be dropped
+  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
+  False_rem <- nrow(Species_History_Tags)-nrow(Corrected_cats)
+  paste("False assessments removed: ", False_rem, sep="")
+  # Remove species with only EX assessments
+  for (i in unique(Corrected_cats$taxonid)){
+    species_cats <- unique(Corrected_cats[Corrected_cats$taxonid==i,]$category)
+    if (length(species_cats)==1 && species_cats=="EX"){
+      Corrected_cats[Corrected_cats$taxonid==i,]$Verified <- "False"
+      }
+  }
+  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
+  # Now need to remove any non-EX assessments that occur after true EX assessments
+  for (i in unique(Corrected_cats$taxonid)){
+    species <- Corrected_cats[Corrected_cats$taxonid == i,]
+    if ("EX" %in% species$category) {
+      EX_assess <- max(which(species$category == "EX"))
+      non_EX_assess <- which(species$category != "EX")
+      False_assess <- species[non_EX_assess[non_EX_assess < EX_assess],]
+      if (nrow(False_assess)<0){
+      Corrected_cats[Corrected_cats$row_ID==False_assess$row_ID,]$Verified <- "False"
+      }
+    }
+  }
+  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
+  # Re run the removal of all EX species as some new ones will have been created
+  for (i in unique(Corrected_cats$taxonid)){
+    species_cats <- unique(Corrected_cats[Corrected_cats$taxonid==i,]$category)
+    if (length(species_cats)==1 && species_cats=="EX"){
+      Corrected_cats[Corrected_cats$taxonid==i,]$Verified <- "False"
+    }
+  }
+  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
+  # Remove species with only one assessment remaining
+  Corrected_cats <- Corrected_cats %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
+  paste("Species with only one assessment remaining removed: ", (nrow(Species_History_Tags)-nrow(Corrected_cats))-False_rem, sep="")
+  
+}
+
+#Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory.csv", header = T, stringsAsFactors = F)
 write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory.csv", row.names = FALSE)
