@@ -68,6 +68,28 @@ Same_cat_tag <- function(group_df){
   return(group_df)
 }
 
+Correct_False_Extinctions <- function(Species_History_Tags){
+  # Any time where a species has a true extant category post extinction, 
+  # that extinction should be labelled as false
+  for (i in unique(Species_History_Tags$taxonid)){
+    species <- Species_History_Tags[Species_History_Tags$taxonid == i,]
+    if ("EX" %in% species$category) { #If there are any EX assessments
+      EX_assess <- which(species$category == "EX")
+      non_EX_assess <- which(species$category != "EX")
+      if (length(non_EX_assess)>0){  
+        # Determines EX assessments happening before extant ones
+        False_assess <- species[EX_assess[max(non_EX_assess) < EX_assess],]
+        True_assess <- species[non_EX_assess[non_EX_assess < max(EX_assess)],]
+        if (nrow(False_assess)>0){
+          # Assign tags if there are false de-extinctions
+          Species_History_Tags[which(Species_History_Tags$row_ID %in% False_assess$row_ID),]$Verified <- "False"
+        }
+      }
+    }
+  }
+  return(Species_History_Tags)
+}
+
 
 Assign_known_tags <- function(Cat_Changes, Species_History){
   # Use Cat_changes to assign tags where we can, need to accces both assessments where a change has happened
@@ -102,7 +124,9 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
   Species_History$Verified[x] <- as.character(Species_History$reason_for_change[x])
   # Remove the column used to transfer the tags
   Species_History$reason_for_change <- NULL
-  # Assign False tags to all DD assessments (shouldn't need but just in case)
+  # Tag all false extinctions (where it's later extant) as False
+  Species_History <- Correct_False_Extinctions(Species_History)
+  # Assign False tags to all DD assessments
   Species_History$Verified[which(Species_History$category=="DD")] <- "False" 
   # Assign unknown values to all other assessments
   Species_History$Verified[which(is.na(Species_History$Verified))] <- "Unknown"
@@ -114,6 +138,7 @@ Species_History <- Assign_known_tags(Cat_Changes, Species_History)
 # checkpoint
 # write.csv(Species_History, "../Data/SpeciesHistory_Tags.csv", row.names = FALSE)
 #Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
+ write.csv(Species_History, "../Data/SpeciesHistory_Tags_deextinct.csv", row.names = FALSE)
 
 
 Define_probabilities <- function(Species_History){
@@ -209,32 +234,13 @@ Final_clean <- function(Corrected_cats){
       }
   }
   Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
-  # Now need to remove any non-EX assessments that occur after true EX assessments
-  for (i in unique(Corrected_cats$taxonid)){
-    species <- Corrected_cats[Corrected_cats$taxonid == i,]
-    if ("EX" %in% species$category) {
-      EX_assess <- max(which(species$category == "EX"))
-      non_EX_assess <- which(species$category != "EX")
-      False_assess <- species[non_EX_assess[non_EX_assess < EX_assess],]
-      if (nrow(False_assess)<0){
-      Corrected_cats[Corrected_cats$row_ID==False_assess$row_ID,]$Verified <- "False"
-      }
-    }
-  }
-  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
-  # Re run the removal of all EX species as some new ones will have been created
-  for (i in unique(Corrected_cats$taxonid)){
-    species_cats <- unique(Corrected_cats[Corrected_cats$taxonid==i,]$category)
-    if (length(species_cats)==1 && species_cats=="EX"){
-      Corrected_cats[Corrected_cats$taxonid==i,]$Verified <- "False"
-    }
-  }
-  Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
   # Remove species with only one assessment remaining
   Corrected_cats <- Corrected_cats %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
   paste("Species with only one assessment remaining removed: ", (nrow(Species_History_Tags)-nrow(Corrected_cats))-False_rem, sep="")
-  
+  return(Corrected_cats)
 }
 
+Corrected_cats <- Final_clean(Corrected_cats)
+
 #Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory.csv", header = T, stringsAsFactors = F)
-write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory.csv", row.names = FALSE)
+write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_deextinct.csv", row.names = FALSE)
