@@ -1,2 +1,8 @@
 *.pdf
 *.Rhistory
+
+Data/SpeciesHistory_Tags.csv
+
+Data/Corrected_SpeciesHistory.csv
+
+Data/
