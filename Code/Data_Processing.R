@@ -78,8 +78,7 @@ Correct_False_Extinctions <- function(Species_History_Tags){
       non_EX_assess <- which(species$category != "EX")
       if (length(non_EX_assess)>0){  
         # Determines EX assessments happening before extant ones
-        False_assess <- species[EX_assess[max(non_EX_assess) < EX_assess],]
-        True_assess <- species[non_EX_assess[non_EX_assess < max(EX_assess)],]
+        False_assess <- species[EX_assess[min(non_EX_assess) < EX_assess],]
         if (nrow(False_assess)>0){
           # Assign tags if there are false de-extinctions
           Species_History_Tags[which(Species_History_Tags$row_ID %in% False_assess$row_ID),]$Verified <- "False"
@@ -124,7 +123,7 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
   Species_History$Verified[x] <- as.character(Species_History$reason_for_change[x])
   # Remove the column used to transfer the tags
   Species_History$reason_for_change <- NULL
-  # Tag all false extinctions (where it's later extant) as False
+  #### Tag all false extinctions (where it's later extant) as False
   Species_History <- Correct_False_Extinctions(Species_History)
   # Assign False tags to all DD assessments
   Species_History$Verified[which(Species_History$category=="DD")] <- "False" 
