@@ -1,7 +1,7 @@
 require(dplyr)
 
 Species_History <- read.csv("../Data/Species_History050220.csv")
-Species_Data <- read.csv("../Data/Species_Data.csv")
+Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
 #setwd("~/Documents/PhD/MiniProject/PhDMiniProjWorkflow/Code")
 
 Assess_Clean <- function(Species_History){
@@ -271,4 +271,38 @@ Process_Threats <- function(Species_Threats){
   return(Threat_index)
 }
 
+## Use Species_Data to subset by taxon.
+Filter_taxa <-function(Species){
+  classification <- NA
+  if (Species["kingdom_name"] == "PLANTAE"){
+    classification <- "Plant"
+  } else if (Species["phylum_name"] != "CHORDATA"){
+    classification <- "Invertebrate"    
+  } else if (Species["class_name"] == "AMPHIBIA"){
+    classification <- "Amphibian"
+  } else if (Species["class_name"] == "AVES"){
+    classification <- "Bird"
+  } else if (Species["class_name"] == "MAMMALIA"){
+    classification <- "Mammal"
+  } else if (Species["class_name"] == "REPTILIA"){
+    classification <- "Reptile"
+  } else {
+    classification <- "Fish"
+  }
+  return(classification)
+}
 
+# Filter to highest sensible taxa and get ids for each
+Process_taxa <- function(Species_Data){
+  # Filter the data down to species that are included in the modelling
+  Species_Data <- dplyr::filter(Species_Data, taxonid %in% Final_Species)
+  # Label each species with its highest taxon
+  Species_Data$Taxon <- apply(Species_Data, 1, Filter_taxa)
+  # List of used taxa
+  Taxa <- c("Plant", "Invertebrate", "Amphibian", "Bird", "Mammal", "Reptile", "Fish")
+  # Get ids for each used taxa
+  Taxa_index <- lapply(Taxa, function(i) unique(Species_Data$taxonid[which(Species_Data$Taxon==i)])) 
+  # rename lists
+  names(Taxa_index) <- Taxa
+  return(Taxa_index)
+}
