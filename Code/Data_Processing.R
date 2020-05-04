@@ -136,7 +136,7 @@ Species_History <- Assign_known_tags(Cat_Changes, Species_History)
 
 # checkpoint
 # write.csv(Species_History, "../Data/SpeciesHistory_Tags.csv", row.names = FALSE)
-#Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
+#Species_History <- read.csv("../Data/SpeciesHistory_Tags_deextinct.csv", header = T, stringsAsFactors = F)
  write.csv(Species_History, "../Data/SpeciesHistory_Tags_deextinct.csv", row.names = FALSE)
 
 
@@ -241,5 +241,34 @@ Final_clean <- function(Corrected_cats){
 
 Corrected_cats <- Final_clean(Corrected_cats)
 
-#Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory.csv", header = T, stringsAsFactors = F)
+#Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_deextinct.csv", header = T, stringsAsFactors = F)
 write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_deextinct.csv", row.names = FALSE)
+
+# Create a vector of all species remaining after processing
+Final_Species <- unique(Corrected_cats$taxonid)
+
+# Read in the threat data
+Species_Threats <- read.csv("../Data/Species_Threats_7.csv", header = T, stringsAsFactors = F)
+Species_Threats <- Species_Threats %>% rename(taxonid = id)
+
+# Func to process the threat data into main threat types
+Process_Threats <- function(Species_Threats){
+  # Filter the threat data down to species that are included in the modelling
+  Species_Threats <- dplyr::filter(Species_Threats, taxonid %in% Final_Species)
+  # Put the highest level of threat in a new column
+  Species_Threats <- Species_Threats %>% mutate(Threat_broad = str_extract(result.code, "([0-9]+)(?=\\.)"))
+  # Recode them according to my cateogries
+  Species_Threats$Threat_broad <- recode(Species_Threats$Threat_broad, "1" = "HabitatChange", "2" = "HabitatChange", "3" = "HabitatChange", "4" = "HabitatChange", "5" = "Overexploitation", "6" = "HabitatChange", "7" = "HabitatChange", "8" = "Invasives", "9" = "Pollution", "10" = "Natural", "11" = "ClimateChange", "12" = "Other")
+  Species_Threats$Threat_broad[which(Species_Threats$result.code=="5.3.3"|Species_Threats$result.code=="5.3.4")] <- "HabitatChange"
+  # Subset to only required columns
+  Species_Threats <- Species_Threats[,c("taxonid", "Threat_broad")]
+  # Make a reference vector of the threats
+  Threats <- c("HabitatChange", "Overexploitation", "Invasives", "Pollution", "ClimateChange", "Natural")
+  # Get a list of all the taxon ids of the species for each threat
+  Threat_index <- lapply(Threats, function(i) unique(Species_Threats$taxonid[which(Species_Threats$Threat_broad==i)])) 
+  # rename to the actual threats for clarity
+  names(Threat_index) <- Threats
+  return(Threat_index)
+}
+
+
