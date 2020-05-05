@@ -293,7 +293,7 @@ Filter_taxa <-function(Species){
 }
 
 # Filter to highest sensible taxa and get ids for each
-Process_taxa <- function(Species_Data){
+Process_taxa <- function(Species_Data, Final_Species){
   # Filter the data down to species that are included in the modelling
   Species_Data <- dplyr::filter(Species_Data, taxonid %in% Final_Species)
   # Label each species with its highest taxon
@@ -306,3 +306,5 @@ Process_taxa <- function(Species_Data){
   names(Taxa_index) <- Taxa
   return(Taxa_index)
 }
+
+Taxa_index<-Process_taxa(Species_Data, Final_Species)
