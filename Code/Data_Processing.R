@@ -1,4 +1,5 @@
 require(dplyr)
+require(tidyverse)
 
 Species_History <- read.csv("../Data/Species_History050220.csv")
 Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
@@ -252,7 +253,7 @@ Species_Threats <- read.csv("../Data/Species_Threats_7.csv", header = T, strings
 Species_Threats <- Species_Threats %>% rename(taxonid = id)
 
 # Func to process the threat data into main threat types
-Process_Threats <- function(Species_Threats){
+Process_Threats <- function(Species_Threats, Final_Species){
   # Filter the threat data down to species that are included in the modelling
   Species_Threats <- dplyr::filter(Species_Threats, taxonid %in% Final_Species)
   # Put the highest level of threat in a new column
@@ -271,6 +272,8 @@ Process_Threats <- function(Species_Threats){
   return(Threat_index)
 }
 
+Threat_index <- Process_Threats(Species_Threats, Final_Species)
+
 ## Use Species_Data to subset by taxon.
 Filter_taxa <-function(Species){
   classification <- NA
@@ -279,13 +282,13 @@ Filter_taxa <-function(Species){
   } else if (Species["phylum_name"] != "CHORDATA"){
     classification <- "Invertebrate"    
   } else if (Species["class_name"] == "AMPHIBIA"){
-    classification <- "Amphibian"
+    classification <- "Herptile"
   } else if (Species["class_name"] == "AVES"){
     classification <- "Bird"
   } else if (Species["class_name"] == "MAMMALIA"){
     classification <- "Mammal"
   } else if (Species["class_name"] == "REPTILIA"){
-    classification <- "Reptile"
+    classification <- "Herptile"
   } else {
     classification <- "Fish"
   }
@@ -299,7 +302,7 @@ Process_taxa <- function(Species_Data, Final_Species){
   # Label each species with its highest taxon
   Species_Data$Taxon <- apply(Species_Data, 1, Filter_taxa)
   # List of used taxa
-  Taxa <- c("Plant", "Invertebrate", "Amphibian", "Bird", "Mammal", "Reptile", "Fish")
+  Taxa <- c("Plant", "Invertebrate", "Amphibian", "Bird", "Mammal", "Herptile", "Fish")
   # Get ids for each used taxa
   Taxa_index <- lapply(Taxa, function(i) unique(Species_Data$taxonid[which(Species_Data$Taxon==i)])) 
   # rename lists
@@ -308,3 +311,25 @@ Process_taxa <- function(Species_Data, Final_Species){
 }
 
 Taxa_index<-Process_taxa(Species_Data, Final_Species)
+
+Assign_taxa <- function(Species_History, Taxa_index){
+    Species_History$Taxon <- NA
+    for (i in 1:length(Taxa_index)){
+      #Taxon_species <- which(Species_History$taxonid %in% Taxa_index[[i]])
+      Species_History$Taxon[Species_History$taxonid %in% Taxa_index[[i]]] <- names(Taxa_index)[i]
+    }
+    return(Species_History)
+}
+
+Corrected_cats <- Assign_taxa(Corrected_cats, Taxa_index)
+
+
+
+
+
+
+
+
+
+
+
