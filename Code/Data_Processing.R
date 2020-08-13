@@ -157,8 +157,14 @@ Define_probabilities <- function(Species_History){
 }
 
 Cat_probs <- Define_probabilities(Species_History)
+# Last bit of deterministic stuff
 
 
+#################################
+####### Repeat this!!! #########
+###############################
+
+#### RANDOM BIT #####
 Generate_tags <- function(Species_History, Cat_probs){
   # Randomly assigns T/F to unknown assessments based on category probabilities
   Categories <- c("LC", "NT", "VU", "EN", "CR", "EX")  
@@ -179,6 +185,22 @@ Generate_tags <- function(Species_History, Cat_probs){
 # Use different name to preserve the original df pre-random assignment
 Species_History_Tags <- Generate_tags(Species_History, Cat_probs)
 
+
+################
+### LONG! Needs work
+
+Correction_func <- function(Species){
+  if (Species["Verified"]=="False" && Species["Prev_Veri"]=="True" && Species["Prev_year"] <= 5){
+    Species["Category"] <- lag(Species["Category"])
+    Species["Verified"] <- "Corrected"
+  } else if (Species["Verified"]=="False" && Species["Prev_Veri"]=="Corrected" && Species["Prev-year"] <= 5){
+    Species["Category"] <- lag(Species["Category"])
+    Species["Verified"] <- "Corrected" 
+  }
+  return("Hello")
+}
+
+
 Reassign_Cats <- function(Species_History_Tags){
   # Works out where/how to change any assessments labelled as false
   Corrected_cats <- Species_History_Tags[NULL,]
@@ -193,12 +215,12 @@ Reassign_Cats <- function(Species_History_Tags){
           # If the following assessment was true
           if (species$Verified[j-1]=="True"){
             # If the following assessment happened within 5 years
-            if (species$year[j-1]-species$year[j]<=5){
+            if (species$year[j-1]-species$year[j]<=10){
               # Give assessment the same catetgory as the following.
               species$category[j] <- species$category[j-1]
               species$Verified[j] <- "Corrected"
             }
-          #### Might remove this bit. Unsure.
+            #### Might remove this bit. Unsure.
           } else if (species$Verified[j-1]=="Corrected"){
             # Find the subsequent true assessment to compare dates
             True_assess <- which(species$Verified=="True")
@@ -220,6 +242,52 @@ Reassign_Cats <- function(Species_History_Tags){
   }
   return(Corrected_cats)
 }
+
+# Reassign_Cats <- function(Species_History_Tags){
+#   # Works out where/how to change any assessments labelled as false
+#   Corrected_cats <- Species_History_Tags[NULL,]
+#   # Splits by taxa
+#   for (i in unique(Species_History_Tags$taxonid)){
+#     species <- Species_History_Tags[Species_History_Tags$taxonid==i,]
+#     # Gets the index values of false assessments
+#     False_assess <- which(species$Verified=="False")
+#     if (length(False_assess)==0){
+#       # Skips cat if there's no false assessments in it
+#       Corrected_cats <- rbind(Corrected_cats, species)
+#     } else {
+#       ## Send to Correction_func
+#       species <- species %>% mutate(Prev_Veri = lag(Verified))
+#       species <- species %>% mutate(Prev_year = ifelse(is.na(lag(year)) == FALSE, lag(year)-year, 9999))
+#       species <- apply(species, 1, Correction_func)
+#      #  for (j in False_assess){ # for each false assessment
+#      # #   if (j > 1){
+#      #      # If the following assessment was true
+#      #      if (species$Verified[j-1]=="True"){
+#      #        # If the following assessment happened within 5 years
+#      #        if (species$year[j-1]-species$year[j]<=5){
+#      #          # Give assessment the same catetgory as the following.
+#      #          species$category[j] <- species$category[j-1]
+#      #          species$Verified[j] <- "Corrected"
+#      #        }
+#      #        #### Might remove this bit. Unsure.
+#      #      } else if (species$Verified[j-1]=="Corrected"){
+#      #        # Find the subsequent true assessment to compare dates
+#      #        True_assess <- which(species$Verified=="True")
+#      #        True_assess <- subset(True_assess, True_assess<j)
+#      #        True_assess <- max(True_assess)
+#      #        # If the next true assessment happened within 5 years, copy category
+#      #        if (species$year[True_assess]-species$year[j]<=5){
+#      #          species$category[j] <- species$category[True_assess]
+#      #          species$Verified[j] <- "Corrected"
+#      #    #    }
+#      #      }
+#      #    }
+#      #  }
+#       Corrected_cats <- rbind(Corrected_cats, species)
+#     }
+#   }
+#   return(Corrected_cats)
+# }
 
 Corrected_cats <- Reassign_Cats(Species_History_Tags)
 
@@ -244,16 +312,97 @@ Final_clean <- function(Corrected_cats){
 
 Corrected_cats <- Final_clean(Corrected_cats)
 
+
+
+
+
+####################################
+
 #Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_deextinct.csv", header = T, stringsAsFactors = F)
-write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_deextinct.csv", row.names = FALSE)
+#write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_deextinct.csv", row.names = FALSE)
+
 
 # Create a vector of all species remaining after processing
 Final_Species <- unique(Corrected_cats$taxonid)
 
+
+########################
+
+## Uncertainty function
+
+Species_list <- unique(Species_History$taxonid)
+
+Uncertainty <- function(Species_History, Species_list){
+  # Take a random half of the species
+  sub <- sample(Species_list, size = length(Species_list)/2)
+  # subset the overall df
+  sub_species <- subset(Species_History, Species_History$taxonid %in% sub)
+  # Randomly generate tags for subset
+  sub_species <- Generate_tags(sub_species, Cat_probs)
+  # Clean!
+  sub_species <- Reassign_Cats(sub_species)
+  sub_species <- Final_clean(sub_species)
+}
+
+
+
+
+
+####################################
+
+## Threat and Taxon processing
+
+
 # Read in the threat data
 Species_Threats <- read.csv("../Data/Species_Threats_7.csv", header = T, stringsAsFactors = F)
-Species_Threats <- Species_Threats %>% rename(taxonid = id)
 
+
+# Generates heat map of threats
+Threats_map <- function(Species_Threats){
+  # rename id column
+  Species_Threats <- Species_Threats %>% rename(taxonid = id)
+  # Create a broat threat category
+  Species_Threats <- Species_Threats %>% mutate(result.code = str_extract(result.code, "([0-9]+)(?=\\.)"))
+  # Remove duplicates and subet to only needed data
+  Species_Threats <- unique(Species_Threats[1:2])
+  Species_Threats$result.code <- as.numeric(Species_Threats$result.code)
+  Species_Threats <- dplyr::filter(Species_Threats, taxonid %in% Final_Species)
+  # create a vector with numbers of each threat
+  threat_num <- table(Species_Threats$result.code)
+  V <- crossprod(table(Species_Threats[1:2]))
+  diag(V) <- 0
+  coul <- colorRampPalette(brewer.pal(8, "BuPu"))(25)
+  for (i in 1:12){
+    V[,i] <- V[,i]/threat_num
+  }
+  levelplot(V, col.regions = coul, xlab = "Threat type", ylab = "Proportion of threat coocurring with other threats") # try cm.colors() or terrain.colors()
+}
+
+Threats_number <- function(Species_Threats){
+  Species_Threats <- Species_Threats %>% rename(taxonid = id)
+  # Filter the threat data down to species that are included in the modelling
+  Species_Threats <- dplyr::filter(Species_Threats, taxonid %in% Final_Species)
+  # subset
+  Species_Threats <- Species_Threats[1:2]
+  # Get a tally of number of threats recorded
+  Species_Threats <- Species_Threats %>% group_by(taxonid) %>% add_tally() %>% rename(all_count = n)
+  # Broaden threat cats
+  Species_Threats <- Species_Threats %>% mutate(result.code = str_extract(result.code, "([0-9]+)(?=\\.)"))
+  # unique subsets so only different threat cats are counted
+  Species_Threats <- unique(Species_Threats)
+  # Get a tally of number of different threats faced by each species
+  Species_Threats <- Species_Threats %>% group_by(taxonid) %>% add_tally() %>% rename(gen_count = n)
+  # subset again
+  Species_Threats <- unique(Species_Threats[c(1,3,4)])
+  return(Species_Threats)
+}
+
+Corrected_cats<- merge(Corrected_cats, Species_Threats, all = TRUE)
+
+
+
+# Function for use in Precess_Threats
+# Assigns certain labels to sub-groups
 Assign_threats <- function(Species_Threats, Threats_cat){
   Threat <- NA
   if (Species_Threats["Threat_mid"] %in% Threats_cat[,"Codes"]){
@@ -265,6 +414,7 @@ Assign_threats <- function(Species_Threats, Threats_cat){
 
 # Func to process the threat data into main threat types
 Process_Threats <- function(Species_Threats, Final_Species){
+  Species_Threats <- Species_Threats %>% rename(taxonid = id)
   # Filter the threat data down to species that are included in the modelling
   Species_Threats <- dplyr::filter(Species_Threats, taxonid %in% Final_Species)
   # Put the highest level of threat in a new column
@@ -306,6 +456,9 @@ Process_Threats_generic <- function(Species_Threats, Final_Species){
   # Put the highest level of threat in a new column
   # Does the same for mid-level
   Species_Threats <- Species_Threats %>% mutate(Threat_broad = str_extract(result.code, "([0-9]+)(?=\\.)"))
+  ##### Optional line to go forward w/o cat 12
+  Species_discard <- Species_Threats[which(Species_Threats$Threat_broad == "12"),]$taxonid
+  Species_Threats <- dplyr::filter(Species_Threats, taxonid %!in% Species_discard)
   # Subset to only required columns
   Species_Threats <- Species_Threats[,c("taxonid", "Threat_broad")]
   # Remove extra rows
@@ -369,7 +522,6 @@ Assign_taxa <- function(Species_History, Taxa_index){
 }
 
 Corrected_cats <- Assign_taxa(Corrected_cats, Taxa_index)
-
 
 
 
