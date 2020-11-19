@@ -342,10 +342,8 @@ Uncertainty <- function(Species_History, Species_list){
   # Clean!
   sub_species <- Reassign_Cats(sub_species)
   sub_species <- Final_clean(sub_species)
+  return(sub_species)
 }
-
-
-
 
 
 ####################################
@@ -451,6 +449,7 @@ Threat_index <- Process_Threats(Species_Threats, Final_Species)
 
 # Func to process the threat data into main threat types
 Process_Threats_generic <- function(Species_Threats, Final_Species){
+  Species_Threats <- Species_Threats %>% rename(taxonid = id)
   # Filter the threat data down to species that are included in the modelling
   Species_Threats <- dplyr::filter(Species_Threats, taxonid %in% Final_Species)
   # Put the highest level of threat in a new column

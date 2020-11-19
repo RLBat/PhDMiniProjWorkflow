@@ -104,9 +104,21 @@ Final_clean <- function(Corrected_cats){
     }
   }
   Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
+  # make empty df
+  rebuilddf <- test1[NULL,]
+  # Remove all but the first EX assessment where there's multiple EX assessments
+  for (i in unique(test1$taxonid)){
+    id <- test1[test1$taxonid == i,]
+    if ("EX" %in% id$category){
+      id <- filter(id, year <= min(id[id$category=="EX",]$year))
+      rebuilddf <- rbind(rebuilddf, id)
+    } else {
+      rebuilddf <- rbind(rebuilddf, id)
+    }
+  }
+  Corrected_cats <- rebuilddf
   # Remove species with only one assessment remaining
   Corrected_cats <- Corrected_cats %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
-  paste("Species with only one assessment remaining removed: ", (nrow(Species_History_Tags)-nrow(Corrected_cats))-False_rem, sep="")
   return(Corrected_cats)
 }
 

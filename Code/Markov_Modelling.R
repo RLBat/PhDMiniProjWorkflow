@@ -3,7 +3,7 @@
 require(msm)
 #require(markovchain)
 require(dplyr)
-#require(diagram)
+require(diagram)
 require(ggplot2)
 require(xtable)
 require(splitstackshape)
@@ -11,8 +11,11 @@ require(tidyverse)
 
 `%!in%` = Negate(`%in%`)
 
+############################
+
 ## Import data
 Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_deextinct.csv", header = T, stringsAsFactors = F)
+
 
 #setwd("~/Documents/PhD/MiniProject/PhDMiniProjWorkflow/Code")
 
@@ -56,7 +59,7 @@ Run_Markov <- function(Historic_assess, Q){
   Historic_assess <- Historic_assess %>% group_by(taxonid) %>% mutate(TSFA = year-min(year))
   
   # Actual model!
-  msm_model <- msm(category ~ TSFA, subject = taxonid, data = Historic_assess, qmatrix = Q, gen.inits = TRUE, control=list(fnscale=60000,maxit=500), covariates = ~ gen_count)
+  msm_model <- msm(category ~ TSFA, subject = taxonid, data = Historic_assess, qmatrix = Q, gen.inits = TRUE, control=list(fnscale=60000,maxit=500))# covariates = ~ gen_count)
   
   return(msm_model)
 }
@@ -66,6 +69,10 @@ Run_Markov <- function(Historic_assess, Q){
 ### Overall model
 
 msm_model <- Run_Markov(Historic_assess, Q)
+
+# Save model for working some stuff out
+
+#save(msm_model, file = "../Data/msmmodel.RData")
 
 ### Taxonomic modelling
 
@@ -89,7 +96,7 @@ pmatrix.msm(Threat_num_model,100)
 #### Testing with mammals
 
 
-Compare_group <- function(){
+Compare_group <- function(HHistoric_assess, ){
   # Tell it which group it is
   group <- subset(Historic_assess, Historic_assess$Taxon == "Mammal")
   not_group <- subset(Historic_assess, Historic_assess$Taxon != "Mammal")
@@ -103,18 +110,37 @@ Compare_group <- function(){
     small_group <- not_group
     big_group <- group
   }
+  # Subset to only the most recent year
   group_recent <- small_group %>% group_by(taxonid) %>% slice(which.max(year))
+  # Number of species in each category
   cat_split <- table(group_recent$category)
-  # Select a subset of bigger group of the same size and same category spread
+  
+  # Subset big group to only most recent year
   big_group_recent <- big_group %>% group_by(taxonid) %>% slice(which.max(year))
+  big_subset_species <- list()
+  # Get equal number from each category from the big group
   for (i in 1:length(cat_split)){
-    lapply()
-    big_group_sample <- big_group_recent %>% filter(category == "NT")
+    big_group_sample <- big_group_recent %>% filter(category == names(cat_split[i]))
+    big_subset_species <- append(big_subset_species, sample(big_group_sample$taxonid, cat_split[i] ,replace = FALSE))
   }
-  
-  
+  ### Final groups!
+  if(group_smaller == TRUE){
+    has_attribute <- small_group
+    no_attribute <- filter(big_group, taxonid %in% big_subset_species)
+  } else {
+    no_attribute <- small_group
+    has_attribute <- filter(big_group, taxonid %in% big_subset_species)
+  }
+  return(list(has_attribute, no_attribute))
 }
 
+
+
+mammal <- Run_Markov(has_attribute, Q)
+no_mammal <- Run_Markov(no_attribute, Q)
+
+a<-pmatrix.msm(mammal, 100)
+b<-pmatrix.msm(no_mammal, 100)
 
 ##################################
 
@@ -171,65 +197,6 @@ Taxon_500 <- Build_Ex_prob_table(Taxon_msm, 100)
 #### Overall ####
 
 plot.msm(msm_model, range=c(0,100), legend.pos = c(0.1, 0.5), xlab = "Years", ylab = "Probability of Survival")
-
-Plot.msm <- function (x, from = NULL, to = NULL, range = NULL, covariates = "mean", 
-          legend.pos = NULL, xlab = "Time", ylab = "Fitted survival probability", 
-          lwd = 1, ...) 
-{
-  if (!inherits(x, "msm")) 
-    stop("expected x to be a msm model")
-  if (is.null(from)) 
-    from <- transient.msm(x)
-  else {
-    if (!is.numeric(from)) 
-      stop("from must be numeric")
-    if (any(!(from %in% 1:x$qmodel$nstates))) 
-      stop("from must be a vector of states in 1, ..., ", 
-           x$qmodel$nstates)
-  }
-  if (is.null(to)) {
-    if (length(absorbing.msm(x)) == 0) 
-      stop("\"to\" not specified, and no absorbing state in the model")
-    to <- max(absorbing.msm(x))
-  }
-  else {
-    if (!is.numeric(to)) 
-      stop("to must be numeric")
-    if (!(to %in% absorbing.msm(x))) 
-      stop("to must be an absorbing state")
-  }
-  if (is.null(range)) 
-    rg <- range(model.extract(x$data$mf, "time"))
-  else {
-    if (!is.numeric(range) || length(range) != 2) 
-      stop("range must be a numeric vector of two elements")
-    rg <- range
-  }
-  timediff <- (rg[2] - rg[1])/50
-  times <- seq(rg[1], rg[2], timediff)
-  pr <- numeric()
-  cols <- c("lightblue", "darkcyan", "orange", "darkorange", "orangered3", "darkred")
-  for (t in times) pr <- c(pr, pmatrix.msm(x, t, times[1], 
-                                           covariates)[from[1], to])
-  plot(times, pr, type = "l", xlab = xlab, ylab = ylab, 
-       lwd = lwd, ylim = c(0, 0.3), lty = 1, col = cols[1], cex.lab = 1.5, cex.axis = 1.2, ...)
-  lt <- 2
-  for (st in from[-1]) {
-    pr <- numeric()
-    for (t in times) pr <- c(pr, pmatrix.msm(x, t, times[1], 
-                                             covariates)[st, to])
-    lines(times, pr, type = "l", lty = 1, lwd = lwd, 
-          col = cols[lt], ...)
-    lt <- lt + 1
-  }
-  abline(v=10, lty=5, col="grey")
-  abline(v=50, lty = 5, col="grey")
-  if (!is.numeric(legend.pos) || length(legend.pos) != 2) 
-    legend.pos <- c(max(times) - 15 * timediff, 1)
-  legend(legend.pos[1], legend.pos[2], legend = c("LC", "NT", "VU", "EN", "CR"), lty = 1, col = cols, lwd = lwd)
-
-  invisible()
-}
 
 Plot.msm(msm_model, range = c(0,100), legend.pos = c(0.1, 0.3), xlab = "Years", ylab = "Probability of Extinction\n", lwd = 3)
 
