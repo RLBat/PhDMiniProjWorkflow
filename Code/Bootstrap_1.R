@@ -61,47 +61,13 @@ Run_Markov <- function(Historic_assess, Q){
 
 ###### BOOTSTRAPPING ##########
 
+### BOOT MODELS ##### 
 
-### BOOT MODELS #####
+msm_model <- Run_Markov(Historic_assess, Q)
 
-#number of species
-n <- length(unique(Historic_assess$taxonid))
-#vector of species IDs
-species <- unique(Historic_assess$taxonid)
-
-Bootstrap_models <- function(Historic_assess){
-  rep <- 0
-  #sampled vector of same size with replacement
-  boot_species <- sample(species, n, replace = TRUE)
-  boot_duplicates <- which(duplicated(boot_species))
-  # Makes the new df of the species sampled with replacement
-  boot_dataframe <- Historic_assess[NULL,]
-  for(i in 1:n){
-    ######## Need to change the IDs where they're repeated or the model won't evaluate them separately ########
-    if (i %in% boot_duplicates){
-      rep <- rep + 1
-      dupe_df <- Historic_assess[which(Historic_assess$taxonid == boot_species[i]),]
-      ### Adds a unique identifier to make sure no species IDs are repeated. Length and ID shouldn't matter after this point.
-      dupe_df$taxonid <- as.numeric(paste(boot_species[i], "000", rep, sep = ""))
-      boot_dataframe <- rbind(boot_dataframe, dupe_df)
-    } else {
-      boot_dataframe <- rbind(boot_dataframe, Historic_assess[which(Historic_assess$taxonid == boot_species[i]),])
-    }
-    
-  }
-  # Run the model on it
-  boot_model <- Run_Markov(boot_dataframe, Q)
-  return(boot_model)
-}
-
-# Generates bootstrapped dfs and runs them through markov models 
-replicate_strt <- proc.time()
-Boot_models <- replicate(100, Bootstrap_models(Historic_assess), simplify = FALSE)
-replicate_end <- proc.time() - replicate_strt
+Boot_models <- boot.msm(msm_model, stat = NULL, B=100, cores = 10)
 
 ##### PROB DATA FROM MODELS #########
-
-#Boot_models <- boot.msm(msm_model, stat = NULL, B=100, cores = 10)
 
 years <- c(1:100)
 
@@ -138,9 +104,7 @@ Boot_output <- Boot_output[,1:7]
 Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
 Boot_output <- spread(Boot_output, key = "Type", value = "Probability")
 
-plot(x=Boot_means$Time, y=Boot_means$CR, type = "l")
-lines(x=Boot_bottom$Time, y=Boot_bottom$CR, col = "blue")
-lines(x=Boot_top$Time, y=Boot_top$CR, col = "Red")
+######### Graphing ##############
 
 p <- ggplot(data = Boot_output, aes(x = Time, y = Mean, colour = Threat_level, xmax = 100))
 p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1))
