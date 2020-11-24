@@ -95,11 +95,10 @@ pmatrix.msm(Threat_num_model,100)
 
 #### Testing with mammals
 
-
-Compare_group <- function(HHistoric_assess, ){
+Compare_group <- function(Historic_assess, sub_group){
   # Tell it which group it is
-  group <- subset(Historic_assess, Historic_assess$Taxon == "Mammal")
-  not_group <- subset(Historic_assess, Historic_assess$Taxon != "Mammal")
+  group <- subset(Historic_assess, Historic_assess$Taxon == "Fish")
+  not_group <- subset(Historic_assess, Historic_assess$Taxon != "Fish")
   # Work out whether the group or not_group is smaller
   group_smaller <- length(unique(group$taxonid)) < length(unique(not_group$taxonid))
   # Work out the threat category spread of the smaller group
