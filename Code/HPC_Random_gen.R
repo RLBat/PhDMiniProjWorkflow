@@ -14,8 +14,7 @@ require(foreach)
 
 ############################
 ## DATA
-
-Species_History <- read.csv("../Data/SpeciesHistory_Tags_deextinct.csv", header = T, stringsAsFactors = F)
+#Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
 
 ###########################
 ## FUNCTIONS
@@ -122,20 +121,17 @@ Final_clean <- function(Corrected_cats){
   return(Corrected_cats)
 }
 
-registerDoParallel(12)
+registerDoParallel(detectCores() - 1)
+# Generate probabilities
+Cat_probs <- Define_probabilities(Species_History)
+
 foreach(i = 1:100) %dopar% {
   ##########################
   ## SCRIPT
-  
-  # Gets the iteration number from the HPC
-  #iter <- as.numeric(Sys.getenv("PBS_ARRAY_INDEX"))
   iter <- i
   
   # sets the random seed based on that iter number
   set.seed(iter)
-  
-  # Generate probabilities
-  Cat_probs <- Define_probabilities(Species_History)
   
   # Assign tags based on probabilities
   Species_History_Tags <- Generate_tags(Species_History, Cat_probs)
