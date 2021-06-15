@@ -63,18 +63,6 @@ Add_table7_tags <- function(Table7, Species_History){
 
 #Cat_Changes <- Add_table7_tags(Table7, Species_History)
 
-Same_cat_tag <- function(group_df){
-  # Function to identify where two assignments in a row are the same and mark the older one as true
-  for (i in 2:nrow(group_df)){
-    if (group_df$category[i] == group_df$category[i-1]){
-      group_df$Verified[i] <- "True"
-    } else {
-      next
-    }
-  }
-  return(group_df)
-}
-
 Correct_False_Extinctions <- function(Species_History_Tags){
   # Any time where a species has a true extant category post extinction, 
   # that extinction should be labelled as false
@@ -107,8 +95,6 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
     species <- Species_History[(Species_History$taxonid == i),]
     # tag the newest entry as unknown
     species[(species$year==max(species$year)),]$Verified <- "Unknown"
-    # Assign True tags where the assessment has been the same twice in a row
-    species <- Same_cat_tag(species)
     # work out which years had DD classifications
     DD_years <- which(species$category=="DD")
     if (length(DD_years)>=1){
@@ -183,61 +169,10 @@ Generate_tags <- function(Species_History, Cat_probs){
   return(Species_History)
 }
 
-# Will want to make this so it runs x times
-# e.g. Species_History_1 <- replicate(3, Generate_tags(Species_History, Cat_probs))
-
 # Use different name to preserve the original df pre-random assignment
 #Species_History_Tags <- Generate_tags(Species_History, Cat_probs)
 
-Reassign_Cats <- function(Species_History_Tags){
-  # Works out where/how to change any assessments labelled as false
-  Corrected_cats <- Species_History_Tags[NULL,]
-  # Splits by taxa
-  for (i in unique(Species_History_Tags$taxonid)){
-    species <- Species_History_Tags[Species_History_Tags$taxonid==i,]
-    # Gets the index values of false assessments
-    False_assess <- which(species$Verified=="False")
-    if (length(False_assess)>0){
-      for (j in False_assess){ # for each false assessment
-        if (j > 1){
-          # If the following assessment was true
-          if (species$Verified[j-1]=="True"){
-            # If the following assessment happened within 10 years
-            if (species$year[j-1]-species$year[j]<=10){
-              # Give assessment the same catetgory as the following.
-              species$category[j] <- species$category[j-1]
-              species$Verified[j] <- "Corrected"
-            }
-            #### Might remove this bit. Unsure.
-          } else if (species$Verified[j-1]=="Corrected"){
-            # Find the subsequent true assessment to compare dates
-            True_assess <- which(species$Verified=="True")
-            True_assess <- subset(True_assess, True_assess<j)
-            True_assess <- max(True_assess)
-            # If the next true assessment happened within 10 years, copy category
-            if (species$year[True_assess]-species$year[j]<=10){
-              species$category[j] <- species$category[True_assess]
-              species$Verified[j] <- "Corrected"
-            }
-          }
-        }
-      }
-      Corrected_cats <- rbind(Corrected_cats, species)
-    } else {
-      # Skips cat if there's no false assessments in it
-      Corrected_cats <- rbind(Corrected_cats, species)
-    }
-  }
-  return(Corrected_cats)
-}
-
-#Corrected_cats <- Reassign_Cats(Species_History_Tags)
-
 Final_clean <- function(Corrected_cats){
-  # Any remaining as false must not meet the criteria so should be dropped
-  #Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
-  #False_rem <- nrow(Species_History_Tags)-nrow(Corrected_cats)
-  #paste("False assessments removed: ", False_rem, sep="")
   # Remove species with only EX assessments
   for (i in unique(Corrected_cats$taxonid)){
     species_cats <- unique(Corrected_cats[Corrected_cats$taxonid==i,]$category)
@@ -245,10 +180,10 @@ Final_clean <- function(Corrected_cats){
       Corrected_cats[Corrected_cats$taxonid==i,]$Verified <- "False"
       }
   }
+  # Any remaining as false must not meet the criteria so should be dropped
   Corrected_cats <- Corrected_cats[which(Corrected_cats$Verified!="False"),]
   # Remove species with only one assessment remaining
   Corrected_cats <- Corrected_cats %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
-  #paste("Species with only one assessment remaining removed: ", (nrow(Species_History_Tags)-nrow(Corrected_cats))-False_rem, sep="")
   return(Corrected_cats)
 }
 
