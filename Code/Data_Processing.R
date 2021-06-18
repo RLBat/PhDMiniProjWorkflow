@@ -7,13 +7,15 @@ require(tidyverse)
 
 # Species_History <- read.csv("../Data/Species_History.csv")
 # Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
-#setwd("~/Documents/PhD/MiniProject/PhDMiniProjWorkflow/Code")
 
 ###############################
 
 Assess_Clean <- function(Species_History){
   # Assigns an index for debugging
   Species_History <- Species_History %>% mutate(row_ID = row_number())
+  # Remove all subspecies
+  Species_Data <- Species_Data[which(is.na(Species_Data$infra_rank)),]
+  Species_History <- Species_History[which(Species_History$taxonid %in% Species_Data$taxonid),]
   # Remove all pre 1994 listings as that is when the current system was implemented
   Species_History <- subset(Species_History, Species_History$year >= 1994)
   # Select which codes to remove    
