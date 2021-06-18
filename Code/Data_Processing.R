@@ -5,7 +5,7 @@ require(tidyverse)
 
 #### Read in your files here #####
 
-# Species_History <- read.csv("../Data/Species_History.csv")
+# Species_History <- read.csv("../Data/Species_History.csv", stringsAsFactors = T)
 # Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
 
 ###############################
@@ -90,6 +90,7 @@ Correct_False_Extinctions <- function(Species_History_Tags){
 Assign_known_tags <- function(Cat_Changes, Species_History){
   # Use Cat_changes to assign tags where we can, need to accces both assessments where a change has happened
   Species_History$Verified <- NA
+  Species_History$Verified <- as.factor(Species_History$Verified)
   # Do any changes that need to be done groupwise
   groupwise_df <- Species_History[NULL,]
   for (i in unique(Species_History$taxonid)){
