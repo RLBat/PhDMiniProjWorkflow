@@ -90,7 +90,7 @@ Correct_False_Extinctions <- function(Species_History_Tags){
 Assign_known_tags <- function(Cat_Changes, Species_History){
   # Use Cat_changes to assign tags where we can, need to accces both assessments where a change has happened
   Species_History$Verified <- NA
-  Species_History$Verified <- as.factor(Species_History$Verified)
+  Species_History$Verified <- factor(Species_History$Verified, levels = c("Unknown", "True", "False"))
   # Do any changes that need to be done groupwise
   groupwise_df <- Species_History[NULL,]
   for (i in unique(Species_History$taxonid)){
@@ -131,9 +131,8 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
 #Species_History <- Assign_known_tags(Cat_Changes, Species_History)
 
 # checkpoint
-# write.csv(Species_History, "../Data/SpeciesHistory_Tags.csv", row.names = FALSE)
-#Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
-# write.csv(Species_History, "../Data/SpeciesHistory_Tags_deextinct.csv", row.names = FALSE)
+# write.csv(Species_History, "../Data/SpeciesHistory_June21.csv", row.names = FALSE)
+# Species_History <- read.csv("../Data/SpeciesHistory_June21.csv", header = T, stringsAsFactors = F)
 
 
 Define_probabilities <- function(Species_History){
@@ -194,8 +193,8 @@ Corrected_cats <- Final_clean(Species_History)
 
 ####################################
 
-#Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_deextinct.csv", header = T, stringsAsFactors = F)
-#write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_deextinct.csv", row.names = FALSE)
+#Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June21.csv", header = T, stringsAsFactors = F)
+#write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_June21.csv", row.names = FALSE)
 
 
 
