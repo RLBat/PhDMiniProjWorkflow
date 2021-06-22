@@ -1,3 +1,7 @@
+require(dplyr)
+require(tidyverse)
+require(msm)
+
 ### Overall model
 
 #msm_model <- Run_Markov(Historic_assess, Q)
@@ -8,7 +12,7 @@
 
 ### Taxonomic modelling
 
-Taxa <- c("Plant", "Invertebrate", "Bird", "Mammal", "Herptile", "Fish")
+Taxa <- c("Plant", "Invertebrate", "Amphibian", "Bird", "Mammal", "Reptile", "Fish")
 # Run models for each taxonomic group.
 Taxon_msm <- lapply(Taxa, function(i) Run_Markov(subset(Historic_assess, Taxon == i), Q))
 names(Taxon_msm) <- Taxa
@@ -25,12 +29,12 @@ pmatrix.msm(Threat_num_model,100)
 
 # Func to compare like with like!
 
-#### Testing with mammals
+#### Currently cannot give the sub-group name or column name in the function call. Need to fix.
 
 Compare_group <- function(Historic_assess, sub_group){
   # Tell it which group it is
-  group <- subset(Historic_assess, Historic_assess$Taxon == "Fish")
-  not_group <- subset(Historic_assess, Historic_assess$Taxon != "Fish")
+  group <- subset(Historic_assess, Historic_assess$Taxon == "Invertebrate")
+  not_group <- subset(Historic_assess, Historic_assess$Taxon != "Invertebrate")
   # Work out whether the group or not_group is smaller
   group_smaller <- length(unique(group$taxonid)) < length(unique(not_group$taxonid))
   # Work out the threat category spread of the smaller group
@@ -49,26 +53,34 @@ Compare_group <- function(Historic_assess, sub_group){
   # Subset big group to only most recent year
   big_group_recent <- big_group %>% group_by(taxonid) %>% slice(which.max(year))
   big_subset_species <- list()
+  small_subset_species <- list()
   # Get equal number from each category from the big group
   for (i in 1:length(cat_split)){
     big_group_sample <- big_group_recent %>% filter(category == names(cat_split[i]))
-    big_subset_species <- append(big_subset_species, sample(big_group_sample$taxonid, cat_split[i] ,replace = FALSE))
-  }
+    group_sample <- group_recent %>% filter(category == names(cat_split[i]))
+    if (nrow(big_group_sample)>cat_split[i]){
+      big_subset_species <- append(big_subset_species, sample(big_group_sample$taxonid, cat_split[i] ,replace = FALSE))
+      small_subset_species <- append(small_subset_species, group_sample$taxonid)
+    } else {
+      big_subset_species <- append(big_subset_species, big_group_sample$taxonid)
+      small_subset_species <- append(small_subset_species, sample(group_sample$taxonid, cat_split[i], replace = FALSE))
+    }
+  }  
   ### Final groups!
   if(group_smaller == TRUE){
-    has_attribute <- small_group
+    has_attribute <- filter(small_group, taxonid %in% small_subset_species)
     no_attribute <- filter(big_group, taxonid %in% big_subset_species)
   } else {
-    no_attribute <- small_group
+    no_attribute <- filter(small_group, taxonid %in% small_subset_species)
     has_attribute <- filter(big_group, taxonid %in% big_subset_species)
   }
   return(list(has_attribute, no_attribute))
 }
 
+attribute_data <- Compare_group(Corrected_cats, sub_group)
 
-
-mammal <- Run_Markov(has_attribute, Q)
-no_mammal <- Run_Markov(no_attribute, Q)
+attribute <- Run_Markov(attribute_data[[1]], Q)
+no_attribute <- Run_Markov(attribute_data[[2]], Q)
 
 a<-pmatrix.msm(mammal, 100)
 b<-pmatrix.msm(no_mammal, 100)
