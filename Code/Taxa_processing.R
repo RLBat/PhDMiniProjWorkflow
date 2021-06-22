@@ -1,3 +1,5 @@
+Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June21.csv", header = T, stringsAsFactors = F)
+Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
 
 # Create a vector of all species remaining after processing
 Final_Species <- unique(Corrected_cats$taxonid)
@@ -36,13 +38,13 @@ Filter_taxa <-function(Species){
   } else if (Species["phylum_name"] != "CHORDATA"){
     classification <- "Invertebrate"    
   } else if (Species["class_name"] == "AMPHIBIA"){
-    classification <- "Herptile"
+    classification <- "Amphibian"
   } else if (Species["class_name"] == "AVES"){
     classification <- "Bird"
   } else if (Species["class_name"] == "MAMMALIA"){
     classification <- "Mammal"
   } else if (Species["class_name"] == "REPTILIA"){
-    classification <- "Herptile"
+    classification <- "Reptile"
   } else {
     classification <- "Fish"
   }
@@ -56,7 +58,7 @@ Process_taxa <- function(Species_Data, Final_Species){
   # Label each species with its highest taxon
   Species_Data$Taxon <- apply(Species_Data, 1, Filter_taxa)
   # List of used taxa
-  Taxa <- c("Plant", "Invertebrate", "Amphibian", "Bird", "Mammal", "Herptile", "Fish")
+  Taxa <- c("Plant", "Invertebrate", "Amphibian", "Bird", "Mammal", "Reptile", "Fish")
   # Get ids for each used taxa
   Taxa_index <- lapply(Taxa, function(i) unique(Species_Data$taxonid[which(Species_Data$Taxon==i)])) 
   # rename lists

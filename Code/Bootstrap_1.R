@@ -11,9 +11,9 @@ require(tidyverse)
 
 ## Import data
 
-#setwd("~/Documents/PhD/MiniProject/PhDMiniProjWorkflow/Code")
+#setwd("~/Documents/PhDMiniProjWorkflow/Code")
 
-Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_deextinct.csv", header = T, stringsAsFactors = F)
+Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_June21.csv", header = T, stringsAsFactors = F)
 
 ################################
 
@@ -96,7 +96,7 @@ Boot_probs<-lapply(Boot_models, Extract_probs, years = years)
 
 Boot_probs <- bind_rows(Boot_probs, .id = "column_label")
 
-#write.csv(Boot_probs, file = "../Data/Boot_probabilities.csv", row.names = FALSE)
+#write.csv(Boot_probs, file = "../Data/Boot_probabilitiesJune21.csv", row.names = FALSE)
 
 Boot_means <- Boot_probs %>% group_by(Time) %>% summarise_at(cats, mean)
 
@@ -157,6 +157,8 @@ p
 
 ###### Comparative bar plots #######
 
+##### Threat #####
+
 # Relevel so that the categories are in the right order
 Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels =  c("LC", "NT", "VU", "EN", "CR"))
 #last 100 years only
@@ -169,13 +171,33 @@ p <- p +  geom_errorbar(aes(ymin = Bottom, ymax = Top), width=0.2)
 p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
                axis.text.y = element_text(size=16),axis.text.x = element_text(size=16), axis.title = element_text(size=20), legend.position = c(0.1,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
 
-# Comparative barplot
+###### Taxa ######
+
+# Relevel so that the categories are in the right order
+Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels =  c("LC", "NT", "VU", "EN", "CR"))
+#last 100 years only
+Boot_output <- Boot_output[which(Boot_output$Time == 100),]
+
+xtable(Boot_output)
 
 #Join the two datasets
-Boot_bind <- rbind(invert_boot, no_invert_boot)
-Boot_bind["Taxa"] <- factor(Boot_bind$Taxa, levels = c("Invertebrate", "Not_Invertebrate"))
+# # Add taxa column for them all
+# bird_boot["Taxa"] <-"Bird"
+# no_bird_boot["Taxa"] <- "Not_Bird"
+# no_invert_boot["Taxa"] <- "Not_Invertebrate"
+# invert_boot["Taxa"] <- "Invertebrate"
+# plant_boot["Taxa"] <- "Plant"
+# no_plant_boot["Taxa"] <- "Not_Plant"
+# fish_boot["Taxa"] <- "Fish"
+# no_fish_boot["Taxa"] <- "Not_Fish"
+# mammal_boot["Taxa"] <- "Mammal"
+# no_mammal_boot["Taxa"] <- "Not_Mammal" 
+# amphibian_boot["Taxa"] <- "Amphibian"
+# no_amphibian_boot["Taxa"] <- "Not_Amphibian"
 
-p <- ggplot(data = Boot_bind, aes(x = Threat_level, y = Mean, xmax=100, fill = Taxa)) + ylim(0,0.8) + scale_fill_manual(values = c("cyan3", "tomato3"))
+Boot_bind <- rbind(plant_boot, no_plant_boot)
+
+p <- ggplot(data = Boot_bind, aes(x = Threat_level, y = Mean, xmax=100, fill = Taxa)) + ylim(0,0.4) + scale_fill_manual(values = c("cyan3", "tomato3"))
 p <- p + geom_bar(stat="identity", position = "dodge") + labs(y = "Probability of Extinction in 100 years", x = "Threat Level")
 p <- p +  geom_errorbar(aes(ymin = Bottom, ymax = Top), width=0.2, position=position_dodge(.9)) + scale_x_discrete(labels= c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered"))
 p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
