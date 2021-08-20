@@ -5,7 +5,7 @@ require(tidyverse)
 
 #### Read in your files here #####
 
-# Species_History <- read.csv("../Data/Species_History.csv", stringsAsFactors = T)
+#Species_History <- read.csv("../Data/Species_History050220.csv", stringsAsFactors = T)
 # Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
 
 ###############################
@@ -65,6 +65,18 @@ Add_table7_tags <- function(Table7, Species_History){
 
 #Cat_Changes <- Add_table7_tags(Table7, Species_History)
 
+Same_cat_tag <- function(group_df){
+  # Function to identify where two assignments in a row are the same and mark the older one as true
+  for (i in 2:nrow(group_df)){
+    if (group_df$category[i] == group_df$category[i-1]){
+      group_df$Verified[i] <- "True"
+    } else {
+      next
+    }
+  }
+  return(group_df)
+}
+
 Correct_False_Extinctions <- function(Species_History_Tags){
   # Any time where a species has a true extant category post extinction, 
   # that extinction should be labelled as false
@@ -98,6 +110,8 @@ Assign_known_tags <- function(Cat_Changes, Species_History){
     species <- Species_History[(Species_History$taxonid == i),]
     # tag the newest entry as unknown
     species[(species$year==max(species$year)),]$Verified <- "Unknown"
+    # Assign True tags where the assessment has been the same twice in a row
+    species <- Same_cat_tag(species)
     # work out which years had DD classifications
     DD_years <- which(species$category=="DD")
     if (length(DD_years)>=1){
@@ -148,7 +162,7 @@ Define_probabilities <- function(Species_History){
   return(Cat_probs)
 }
 
-Cat_probs <- Define_probabilities(Species_History)
+# Cat_probs <- Define_probabilities(Species_History)
 # Last bit of deterministic stuff
 
 
@@ -189,7 +203,7 @@ Final_clean <- function(Corrected_cats){
   return(Corrected_cats)
 }
 
-Corrected_cats <- Final_clean(Species_History)
+#Corrected_cats <- Final_clean(Species_History)
 
 ####################################
 
