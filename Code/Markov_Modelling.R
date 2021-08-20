@@ -46,6 +46,7 @@ plotmat(Q, pos = c(1,1,1,1,1,1), relsize = 0.87, box.type = "round", box.size = 
 
 Run_Markov <- function(Historic_assess, Q){
   # Reverse year order for the state table
+  Historic_assess$category <- as.character(Historic_assess$category)
   Historic_assess<-arrange(Historic_assess, taxonid, year)
   
   # Change cats to numbers for modelling

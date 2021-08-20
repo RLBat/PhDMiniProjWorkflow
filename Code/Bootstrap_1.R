@@ -36,9 +36,11 @@ Transition_intensity_matrix <- function(Categories){
 }
 
 Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "EX"))
+Q[6,6] <- 0 #removes the transition from extinct to extinct
 
 Run_Markov <- function(Historic_assess, Q){
   # Reverse year order for the state table
+  Historic_assess$category <- as.character(Historic_assess$category)
   Historic_assess<-arrange(Historic_assess, taxonid, year)
   
   # Change cats to numbers for modelling
