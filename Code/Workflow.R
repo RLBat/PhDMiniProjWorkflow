@@ -8,8 +8,8 @@
 Table7 <- read.csv("../Data/Table7.csv", header=TRUE, stringsAsFactors = FALSE)
 
 ### If not done data collection, use files from 03-2020
-# Species_History <- read.csv("../Data/Species_History.csv", stringsAsFactors = T)
-# Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
+Species_History <- read.csv("../Data/Species_History050220.csv", stringsAsFactors = T)
+Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
 
 ###########################
 
@@ -50,11 +50,8 @@ Cat_probs <- Define_probabilities(Species_History)
 
 Species_History_Tags <- Generate_tags(Species_History, Cat_probs)
 
-# Reassign false tags where possible
-Corrected_cats <- Reassign_Cats(Species_History_Tags)
-
 # Final cleaning steps
-Corrected_cats <- Final_clean(Corrected_cats)
+Corrected_cats <- Final_clean(Species_History_Tags)
 
 ################
 ##### If running multiple
