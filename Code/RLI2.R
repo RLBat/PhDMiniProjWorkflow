@@ -14,7 +14,7 @@ Assess_Clean_RLI <- function(Species_History){
   Species_Data <- Species_Data[which(is.na(Species_Data$infra_rank)),]
   Species_History <- Species_History[which(Species_History$taxonid %in% Species_Data$taxonid),]
   # Now rename codes where they have several names
-  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "Ex?" = "EX", "EW" = "CR", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT", "CR(PE)" = "CR", "CR (PE)" = "CR", "CR(PEW)"= "CR")
+  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "Ex?" = "EX", "EW" = "EX", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT", "CR(PE)" = "EX", "CR (PE)" = "EX", "CR(PEW)"= "EX")
   # Generate a df of only the years with two assessments
   Duplicates <- Species_History %>% group_by(taxonid) %>% filter(duplicated(year)|duplicated(year, fromLast=TRUE))
   # Remove these assessments as there is no way to know which order they were in
@@ -27,6 +27,26 @@ Assess_Clean_RLI <- function(Species_History){
   return(Species_History)
 }
 
+Correct_False_Extinctions <- function(Species_History_Tags){
+  # Any time where a species has a true extant category post extinction, 
+  # that extinction should be labelled as false
+  for (i in unique(Species_History_Tags$taxonid)){
+    species <- Species_History_Tags[Species_History_Tags$taxonid == i,]
+    if ("EX" %in% species$category) { #If there are any EX assessments
+      EX_assess <- which(species$category == "EX")
+      non_EX_assess <- which(species$category != "EX")
+      if (length(non_EX_assess)>0){  
+        # Determines EX assessments happening before extant ones
+        False_assess <- species[EX_assess[min(non_EX_assess) > EX_assess],]
+        if (nrow(False_assess)>0){
+          # Assign tags if there are false de-extinctions
+          Species_History_Tags[which(Species_History_Tags$row_ID %in% False_assess$row_ID),]$Verified <- "False"
+        }
+      }
+    }
+  }
+  return(Species_History_Tags)
+}
 
 # Format the Bird RLI data for modelling
 Format_BirdRLI <- function(Bird_RLI){
@@ -39,16 +59,19 @@ Format_BirdRLI <- function(Bird_RLI){
   Bird_RLI$year <- as.numeric(Bird_RLI$year)
   # Run the cleaner on it to remove subspecies and properly sort categories
   Bird_RLI <- Assess_Clean_RLI(Bird_RLI)
+  Bird_RLI$Verified <- NA
+  # Check for artificial de-extinctions and recode those assessments as CR.
+  Bird_RLI <- Correct_False_Extinctions(Bird_RLI)
+  Bird_RLI <- Bird_RLI[which(is.na(Bird_RLI$Verified)),]
   
   #### Split pre and post 2001 to see if that has a big impact.
   
   oldBird <- Bird_RLI[which(Bird_RLI$year<2001),]
   newBird <- Bird_RLI[which(Bird_RLI$year>=2001),]
   
-  return(oldBird, newBird)
+  return(Bird_RLI)
 }
 
 
-
-
+Bird_RLI <- Format_BirdRLI(Bird_RLI)
 
