@@ -87,7 +87,7 @@ Correct_False_Extinctions <- function(Species_History_Tags){
       non_EX_assess <- which(species$category != "EX")
       if (length(non_EX_assess)>0){  
         # Determines EX assessments happening before extant ones
-        False_assess <- species[EX_assess[min(non_EX_assess) < EX_assess],]
+        False_assess <- species[EX_assess[min(non_EX_assess) > EX_assess],]
         if (nrow(False_assess)>0){
           # Assign tags if there are false de-extinctions
           Species_History_Tags[which(Species_History_Tags$row_ID %in% False_assess$row_ID),]$Verified <- "False"
