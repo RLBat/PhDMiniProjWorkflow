@@ -1,14 +1,54 @@
+### Formatting the Bird RLI data so it can be fed into the model
+
 require(dplyr)
 require(tidyverse)
 
-Bird_RLI <- read.csv("../Data/Bird_RLI_original.csv", stringsAsFactors = T)
-Bird_RLI <- Bird_RLI[,2:10]
+### Call in the Bird RLI data
+#Bird_RLI <- read.csv("../Data/Bird_RLI_original.csv", stringsAsFactors = T)
 
-names(Bird_RLI) <- c("binomial", "taxonid", "1988", "1994", "2000","2004","2008","2012","2016")
-Bird_RLI <- pivot_longer(Bird_RLI, cols = c("1988", "1994", "2000","2004","2008","2012","2016")
-, names_to = "year", values_to = "category")
+## Modified version of the assessment cleaner, renames categories so it'll assign correctly and removes sub-species
+Assess_Clean_RLI <- function(Species_History){
+  # Assigns an index for debugging
+  Species_History <- Species_History %>% mutate(row_ID = row_number())
+  # Remove all subspecies
+  Species_Data <- Species_Data[which(is.na(Species_Data$infra_rank)),]
+  Species_History <- Species_History[which(Species_History$taxonid %in% Species_Data$taxonid),]
+  # Now rename codes where they have several names
+  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "Ex?" = "EX", "EW" = "CR", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT", "CR(PE)" = "CR", "CR (PE)" = "CR", "CR(PEW)"= "CR")
+  # Generate a df of only the years with two assessments
+  Duplicates <- Species_History %>% group_by(taxonid) %>% filter(duplicated(year)|duplicated(year, fromLast=TRUE))
+  # Remove these assessments as there is no way to know which order they were in
+  Species_History <- Species_History %>% filter(!Species_History$row_ID %in% Duplicates$row_ID)
+  # Remove species with only one assessment remaining
+  Species_History <- Species_History %>% group_by(taxonid) %>% filter(n()>1) %>% ungroup
+  # Add species name to table
+  Species_History <- inner_join(Species_History, Species_Data[,c(1,8)], by = "taxonid")
+  Species_History$category<-droplevels(Species_History$category)
+  return(Species_History)
+}
 
-cols = c("X1988", "X1994", "X2000", "X2004", "X2008", "X2012", "X2016")
 
-Bird_RLI$year <- as.numeric(Bird_RLI$year)
+# Format the Bird RLI data for modelling
+Format_BirdRLI <- function(Bird_RLI){
+  Bird_RLI <- Bird_RLI[,2:10]
+  # rename columns
+  names(Bird_RLI) <- c("binomial", "taxonid", "1988", "1994", "2000","2004","2008","2012","2016")
+  # pivot to long formatting
+  Bird_RLI <- pivot_longer(Bird_RLI, cols = c("1988", "1994", "2000","2004","2008","2012","2016")
+                           , names_to = "year", values_to = "category")
+  Bird_RLI$year <- as.numeric(Bird_RLI$year)
+  # Run the cleaner on it to remove subspecies and properly sort categories
+  Bird_RLI <- Assess_Clean_RLI(Bird_RLI)
+  
+  #### Split pre and post 2001 to see if that has a big impact.
+  
+  oldBird <- Bird_RLI[which(Bird_RLI$year<2001),]
+  newBird <- Bird_RLI[which(Bird_RLI$year>=2001),]
+  
+  return(oldBird, newBird)
+}
+
+
+
+
 
