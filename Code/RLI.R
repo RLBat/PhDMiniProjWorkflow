@@ -1,7 +1,7 @@
 #setwd("~/Documents/PhD/MiniProject/PhDMiniProjWorkflow/Code")
 
 Table7 <- read.csv("../Data/Table7.csv", header=TRUE, stringsAsFactors = FALSE)
-Species_History <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
+Species_History1 <- read.csv("../Data/SpeciesHistory_Tags.csv", header = T, stringsAsFactors = F)
 
 ################
 

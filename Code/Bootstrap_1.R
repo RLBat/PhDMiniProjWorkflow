@@ -13,7 +13,7 @@ require(tidyverse)
 
 #setwd("~/Documents/PhDMiniProjWorkflow/Code")
 
-Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_June21.csv", header = T, stringsAsFactors = F)
+Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header = T, stringsAsFactors = F)
 
 ################################
 
@@ -138,6 +138,7 @@ p
 hundred_year <- rbind(Boot_means[100,2:6], Boot_bottom[100,2:6], Boot_top[100,2:6])
 hundred_year["Source"] <- c("Mean", "Bottom", "Top")
 #hundred_year[4,] <- c("0.025","0.05","0.1","0.2","0.4","Issac")
+hundred_year <- as.data.frame(hundred_year)
 hundred_year[4,] <- c("0.0001", "0.01", "0.1", "0.667", "0.999", "IUCN")
 hundred_year <- gather(hundred_year, key = "Threat_level", value = "Probability", 1:5)
 

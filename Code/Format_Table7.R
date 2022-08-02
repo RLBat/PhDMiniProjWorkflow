@@ -26,7 +26,9 @@ changes2016 <- read.csv("../Data/2016Table7.csv", header=FALSE)
 changes2017 <- read.csv("../Data/2017Table7.csv", header=FALSE)
 changes2018 <- read.csv("../Data/2018Table7.csv", header=FALSE)
 changes2019 <- read.csv("../Data/2019Table7.csv", header=FALSE)
-
+changes2020 <- read.csv("../Data/2020Table7.csv", header=TRUE)
+changes2021 <- read.csv("../Data/2021Table7.csv", header=TRUE)
+#table7 <- read.csv("../Data/Table7.csv", header=TRUE)
 
 ## Individual changes to get the formatting in line with each other
 changes2008["Reason_For_Change"] <- "G"
@@ -40,12 +42,14 @@ changes2012 <- changes2012[,2:7]
 changes2013 <- changes2013[,2:7]
 changes2014 <- changes2014[,2:7]
 
+changes2020 <- changes2020[,1:6]
+changes2021 <- changes2021[,1:6]
+
 ## Put all of the dfs in a list
-all_tables = mget(ls(pattern = "changes[2007:2019]"))
+all_tables = mget(ls(pattern = "changes[2007:2021]"))
 
 ## Make all the colnames the same
 for (i in 1:length(all_tables)){
-  print(i)
   names(all_tables[[i]]) <- col_names
 }
 
@@ -54,9 +58,9 @@ Table7 <- bind_rows(all_tables)
 Table7[Table7==""] <- NA
 Table7 <- Table7[complete.cases(Table7[,c(1,3:6)]),]
 
-## Check for and remove erroneous rows
-table(Table7$previous_category)
-Table7 <- dplyr::filter(Table7, previous_category != "(2007)" & previous_category != "(2008)")
+## Check for and remove erroneous rows ---- unsure what this does????
+#table(Table7$previous_category)
+#Test <- dplyr::filter(Table7, previous_category != "(2007)" & previous_category != "(2008)")
 
 write.csv(Table7, "../Data/Table7.csv", row.names = FALSE)
 

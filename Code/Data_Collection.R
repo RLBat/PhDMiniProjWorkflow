@@ -1,6 +1,6 @@
 library(rredlist)
 library(jsonlite)
-#library(tidyverse)
+library(tidyverse)
 
 # Function to collect the required species assessment data
 Species_Info_Collect <- function(API_key) {
@@ -14,13 +14,13 @@ Species_Info_Collect <- function(API_key) {
     Sys.sleep(2)
   }
   # Write to csv
-  write_csv(Species_Data, "../Data/Species_Data.csv")
+  write.csv(Species_Data, "../Data/Species_Data_2022.csv")
   return(Species_Data)
 }
 
 # # Collect species histories for each category. Using ID solves issues with odd characters in names.
 # Species_History_Collect <- function(API_key, Species_IDs = Species_Data$taxonid){
-#   # Save the first species' history to initialise the dataframe. 
+#   # Save the first species' history to initialise the dataframe.
 #   Species_History <- as.data.frame(rl_history(id=Species_IDs[1], key=API_key))
 #   Species_History <- dplyr::select(Species_History, taxonid = name, year = result.year, category = result.code)
 #   # Initialise vector for species with <=1 assessment
@@ -50,26 +50,26 @@ Species_Info_Collect <- function(API_key) {
 
 # Collect species histories for each category. Using ID solves issues with odd characters in names.
 Species_History_Collect <- function(API_key, Search_type = "ID", Species_IDs = Species_Data$taxonid, Species_names = as.character(Species_Data$scientific_name)){
-  if (Search_type = "ID"){
+  if (Search_type == "ID"){
     # Save the first species' history to initialise the dataframe. 
     Species_History <- as.data.frame(rl_history(id=Species_IDs[1], key=API_key))
     Species_History <- dplyr::select(Species_History, taxonid = name, year = result.year, category = result.code)
     # Initialise vector for species with <=1 assessment
-    Excluded_Species <- c()
+    #Excluded_Species <- c()
     # Run for the rest of the species.
-    for (i in 2:length(Species_IDs)){
+    for (i in which(max(Species_History$taxonid)==Species_IDs):length(Species_IDs)){
       species_iter <- as.data.frame(rl_history(id=Species_IDs[i], key=API_key))
       species_iter <- dplyr::select(species_iter, taxonid = name, year = result.year, category = result.code)
       # Binds the assessment history to the master df
       Species_History <- rbind(Species_History, species_iter)
-      if (nrow(species_iter)<=1){
-        # Records the ID for any unsuitable species
-        Excluded_Species <- append(Excluded_Species, as.numeric(Species_IDs[i]))
-      }
+      # if (nrow(species_iter)<=1){
+      #   # Records the ID for any unsuitable species
+      #   Excluded_Species <- append(Excluded_Species, as.numeric(Species_IDs[i]))
+      # }
       if (i %% 100 == 0){
         # Saves both the master list and list of excluded species every 1000 species checked as it takes a while to run
-        write.csv(Species_History, "../Data/Species_History_IDs.csv")
-        write.csv(as.data.frame(Excluded_Species), "../Data/Excluded_Species_IDs.csv")
+        write.csv(Species_History, "../Data/Species_History_IDs_2.csv")
+        #write.csv(as.data.frame(Excluded_Species), "../Data/Excluded_Species_IDs.csv")
         # Adds in a pause function to avoid the API from blocking access due to too many pings
         Sys.sleep(10)
       }
@@ -88,21 +88,21 @@ Species_History_Collect <- function(API_key, Search_type = "ID", Species_IDs = S
           species_iter <- dplyr::select(species_iter, name, year = result.year, category = result.code)
           # Binds the assessment history to the master df
           Species_History <- rbind(Species_History, species_iter)
-          if (nrow(species_iter)<=1){
-            # Records the ID for any unsuitable species
-            Excluded_Species <- append(Excluded_Species, Species_names[i])
-          }
+          # if (nrow(species_iter)<=1){
+          #   # Records the ID for any unsuitable species
+          #   Excluded_Species <- append(Excluded_Species, Species_names[i])
+          # }
       }
       if (i %% 50 == 0){
         # Saves both the master list and list of excluded species every 1000 species checked as it takes a while to run
         write.csv(Species_History, "../Data/Species_History_names.csv", row.names = FALSE)
-        write.csv(as.data.frame(Excluded_Species), "../Data/Excluded_Species_names.csv", row.names = FALSE)
+        #write.csv(as.data.frame(Excluded_Species), "../Data/Excluded_Species_names.csv", row.names = FALSE)
         # Adds in a pause function to avoid the API from blocking access due to too many pings
         Sys.sleep(10)
       }
     }
   }
-  return(c(Species_History, Excluded_Species))
+  return(Species_History) #c(Species_History, Excluded_Species))
 }
 
 
@@ -119,7 +119,7 @@ Species_Meta_Collect <- function(API_key=API_key, Species_IDs = Species_Data$tax
     Species_Meta[nrow(Species_Meta)+1,] <- as.data.frame(rl_search(id=Species_IDs[i], key=API_key)[[2]])
     if (i %% 50 == 0){
       # Saves the master list every 1000 species checked as it takes a while to run
-      write_csv(Species_Meta, "../Data/Species_Meta.csv")
+      write.csv(Species_Meta, "../Data/Species_Meta.csv")
       # Adds in a pause function to avoid the API from blocking access due to too many pings
       Sys.sleep(10)
       if (i %% 1000 == 0){

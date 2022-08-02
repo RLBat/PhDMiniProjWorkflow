@@ -5,8 +5,8 @@ require(tidyverse)
 
 #### Read in your files here #####
 
-#Species_History <- read.csv("../Data/Species_History050220.csv", stringsAsFactors = T)
-# Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
+Species_History <- read.csv("../Data/Species_History_IDs_20223.csv", stringsAsFactors = T)
+Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
 
 ###############################
 
@@ -87,7 +87,7 @@ Correct_False_Extinctions <- function(Species_History_Tags){
       non_EX_assess <- which(species$category != "EX")
       if (length(non_EX_assess)>0){  
         # Determines EX assessments happening before extant ones
-        False_assess <- species[EX_assess[min(non_EX_assess) > EX_assess],]
+        False_assess <- species[EX_assess[min(non_EX_assess) < EX_assess],]
         if (nrow(False_assess)>0){
           # Assign tags if there are false de-extinctions
           Species_History_Tags[which(Species_History_Tags$row_ID %in% False_assess$row_ID),]$Verified <- "False"
@@ -208,7 +208,7 @@ Final_clean <- function(Corrected_cats){
 ####################################
 
 #Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June21.csv", header = T, stringsAsFactors = F)
-#write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_June21.csv", row.names = FALSE)
+#write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_June222022.csv", row.names = FALSE)
 
 
 
