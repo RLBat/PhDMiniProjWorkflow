@@ -80,6 +80,9 @@ msm_model <- Run_Markov(Historic_assess, Q)
 ## Bootstrap the model
 Boot_models <- Bootstrap_msm(msm_model, repeats = 100)
 
+### If not all converge
+Boot_models <- Boot_models[!sapply(Boot_models, function(x) class(x) == "try-error")]
+
 # Extract the probabilities to save or graph
 Boot_Probs <- Boot_probs(Boot_models = Boot_models)
 
