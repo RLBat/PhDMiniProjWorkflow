@@ -4,6 +4,7 @@ require(msm)
 require(dplyr)
 require(doParallel)
 require(tidyverse)
+require(ggplot2)
 
 `%!in%` = Negate(`%in%`)
 
@@ -96,16 +97,16 @@ Extract_probs <- function(model, years){
 
 Boot_probs<-lapply(Boot_models, Extract_probs, years = years)
 
-Boot_probs <- bind_rows(Boot_probs, .id = "column_label")
+Boot_Probs <- bind_rows(Boot_probs, .id = "column_label")
 
 #write.csv(Boot_probs, file = "../Data/Boot_probabilitiesJune21.csv", row.names = FALSE)
 
-Boot_means <- Boot_probs %>% group_by(Time) %>% summarise_at(cats, mean)
+Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
 
 # Boot_95 <- Boot_probs %>% group_by(Time) %>% summarise_at(cats, ~qnorm(0.975)*sd(.x)/sqrt(100))
 
-Boot_top <- Boot_probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
-Boot_bottom <- Boot_probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
+Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
+Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
 
 # Boot_top <- Boot_means[2:7] + Boot_95[2:7]
 # Boot_bottom <- Boot_means[2:7] - Boot_95[2:7]
@@ -127,7 +128,7 @@ Boot_output <- spread(Boot_output, key = "Type", value = "Probability")
 
 p <- ggplot(data = Boot_output, aes(x = Time, y = Mean, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "orangered3", "darkorange", "orange", "darkcyan", "lightblue"))
 p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1))
-p <- p + geom_ribbon(aes(ymin=Boot_output$Bottom, ymax=Boot_output$Top, alpha=0.5),fill="lightgrey", linetype = 2, show.legend = FALSE)
+p <- p + geom_ribbon(aes(ymin=Bottom, ymax=Top, alpha=0.5),fill="lightgrey", linetype = 2, show.legend = FALSE)
 p <- p + labs(y = "Probability of extinction", x= "Years", colour = "Threat Level") 
 p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
                axis.text.y = element_text(size=16), axis.title = element_text(size=20), legend.position = c(0.1,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
@@ -225,3 +226,5 @@ load("../Data/Taxa_Boot.RData")
 # not_fish_boot["Taxa"] <- "Not_Fish"
 # mammal_boot["Taxa"] <- "Mammal"
 # not_mammal_boot["Taxa"] <- "Not_Mammal" 
+
+
