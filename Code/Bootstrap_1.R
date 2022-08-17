@@ -100,6 +100,7 @@ Boot_probs<-lapply(Boot_models, Extract_probs, years = years)
 Boot_Probs <- bind_rows(Boot_probs, .id = "column_label")
 
 #write.csv(Boot_probs, file = "../Data/Boot_probabilitiesJune21.csv", row.names = FALSE)
+#################################################
 
 Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
 

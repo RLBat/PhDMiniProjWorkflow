@@ -67,3 +67,49 @@ Boot_probs <- function(Boot_models, years = c(1:100)){
   return(Boot_probabilities)
 }
 
+
+Run_bootmarkov <- function(Historic_assess, Q){
+  ### Overall model
+  msm_model <- Run_Markov(Historic_assess, Q)
+  
+  ## Bootstrap the model
+  Boot_models <- Bootstrap_msm(msm_model, repeats = 100)
+  
+  ### If not all converge
+  Boot_models <- Boot_models[!sapply(Boot_models, function(x) class(x) == "try-error")]
+  
+  if (length(Boot_models)<100){
+    print("Not all models converged")
+  }
+  
+  # Extract the probabilities to save or graph
+  Boot_Probs <- Boot_probs(Boot_models = Boot_models)
+  
+  ## code to very quickly check the outcome of models
+  test <- Boot_Probs[which(Boot_Probs$Time == "100"),]
+  summ <- test %>% summarise_all(range)
+  if (0 %in% summ[1,]){
+    print("Some models produced a 0% chance of extinction")
+  }
+  return(Boot_Probs)
+}
+
+
+
+
+Boot_100 <- function(Boot_Probs){
+  cats <- c("LC","NT","VU", "EN","CR", "EX")
+  
+  Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
+  Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
+  Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
+  
+  hundred_year <- rbind(Boot_means[100,2:6], Boot_bottom[100,2:6], Boot_top[100,2:6])
+  hundred_year["Source"] <- c("Mean", "Bottom", "Top")
+  hundred_year <- as.data.frame(hundred_year)
+  hundred_year <- gather(hundred_year, key = "Threat_level", value = "Probability", 1:5)
+  hundred_year$Threat_level <- recode(hundred_year$Threat_level, "LC" = 1, "NT" = 2, "VU" = 3, "EN" = 4, "CR" = 5)
+  hundred_year$Threat_level <- as.factor(hundred_year$Threat_level)
+  hundred_year$Probability <- as.numeric(hundred_year$Probability)
+  return(hundred_year)
+}
