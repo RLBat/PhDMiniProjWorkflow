@@ -1,4 +1,5 @@
 require(dplyr)
+require(tidyverse)
 
 `%!in%` = Negate(`%in%`)
 
@@ -91,44 +92,79 @@ birds_top <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_thir
 
 ###############################
 
+## Run model as per the workflow
+
+Boot_100 <- function(Boot_Probs){
+  cats <- c("LC","NT","VU", "EN","CR", "EX")
+  
+  Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
+  Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
+  Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
+  
+  hundred_year <- rbind(Boot_means[100,2:6], Boot_bottom[100,2:6], Boot_top[100,2:6])
+  hundred_year["Source"] <- c("Mean", "Bottom", "Top")
+  hundred_year <- as.data.frame(hundred_year)
+  hundred_year <- gather(hundred_year, key = "Threat_level", value = "Probability", 1:5)
+  hundred_year$Threat_level <- recode(hundred_year$Threat_level, "LC" = 1, "NT" = 2, "VU" = 3, "EN" = 4, "CR" = 5)
+  hundred_year$Threat_level <- as.factor(hundred_year$Threat_level)
+  hundred_year$Probability <- as.numeric(hundred_year$Probability)
+  return(hundred_year)
+}
+
+
 ### graphing ###
 
-Mammal_Heavy_100[,4] <- "Heavy"
-Mammal_Light_100[,4] <- "Light"
+birds_heavy_100 <- Boot_100(Bird_Heavy_boot)
+birds_light_100 <- Boot_100(Bird_Light_boot)
 
-Mammal_bm_100 <- rbind(Mammal_Heavy_100, Mammal_Light_100)
-Mammal_bm_100 <- Mammal_bm_100[which(Mammal_bm_100$Source == "Mean"),]
+birds_heavy_100[,4] <- "Heavy"
+birds_light_100[,4] <- "Light"
 
-Mammal_bm_100 <- Mammal_bm_100 %>% mutate(V4 = fct_relevel(V4, "Light", "Heavy"))
+birds_bm_100 <- rbind(birds_heavy_100, birds_light_100)
+#birds_bm_100 <- birds_bm_100[which(birds_bm_100$Source == "Mean"),]
 
-p <- ggplot(data = Mammal_bm_100, aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3"))
-p <- p + geom_bar(stat = "identity", position = "dodge")
-p
+birds_bm_100 <- birds_bm_100 %>% mutate(V4 = fct_relevel(V4, "Light", "Heavy"))
+
+Plot_100 <- function(hundred_year){
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3"), name = "Body Mass")
+  p <- p + geom_bar(stat = "identity", position = "dodge") + scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
+  p <- p + labs(y = "Probability of extinction at t=100", x = "IUCN Species Threat Assessment")
+  p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
+  p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
+  return(p)
+}
+
+Plot_100(birds_bm_100)
+
+t.test(Bird_Heavy_boot[which(Bird_Heavy_boot$Time == 100), "EN"], Bird_Light_boot[which(Bird_Light_boot$Time == 100), "EN"])
 
 
-Mammal_bm_100$
-
-
-
-
-
-
-
-
-
-
-Final_Species_List <- Historic_assess$scientific_name
-
-## read in a list of viable species to save processing time
-
-iucnmammals <- Species_Data[which(Species_Data$class_name == "MAMMALIA"),"scientific_name"]
-## reduce this list to only viable species - i.e. ones that pass the cleaning steps.
-
-mammal_bm <- read.csv("../Data/mammal_bodymass_2022.csv")
-
-matched_mammal <- mammal_bm[which(mammal_bm$IUCN_name %in% iucnmammals),]
-
-matched_mammal <- matched_mammal[,c(1,3,5)]
+# 
+# 
+# Mammal_bm_100$
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# Final_Species_List <- Historic_assess$scientific_name
+# 
+# ## read in a list of viable species to save processing time
+# 
+# iucnmammals <- Species_Data[which(Species_Data$class_name == "MAMMALIA"),"scientific_name"]
+# ## reduce this list to only viable species - i.e. ones that pass the cleaning steps.
+# 
+# mammal_bm <- read.csv("../Data/mammal_bodymass_2022.csv")
+# 
+# matched_mammal <- mammal_bm[which(mammal_bm$IUCN_name %in% iucnmammals),]
+# 
+# matched_mammal <- matched_mammal[,c(1,3,5)]
 
 
 ### checked and corrected issues with out of date matches
