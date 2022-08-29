@@ -132,7 +132,7 @@ p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1))
 p <- p + geom_ribbon(aes(ymin=Bottom, ymax=Top, alpha=0.5),fill="lightgrey", linetype = 2, show.legend = FALSE)
 p <- p + labs(y = "Probability of extinction", x= "Years", colour = "Threat Level") 
 p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
-               axis.text.y = element_text(size=16), axis.title = element_text(size=20), legend.position = c(0.1,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
+               axis.text.y = element_text(size=16), axis.title = element_text(size=20), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
 p
 
 #### Plot for presentation #####

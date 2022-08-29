@@ -53,22 +53,22 @@ Bootstrap_msm <- function(msm_model, repeats = 100){
   return(Boot_models)
 }
 
-Extract_probs <- function(model = Boot_models, years = 100){
+Extract_probs <- function(model = Boot_models, years = 1:100, state = "EX"){
   Probabilities <- data.frame(Time = years, LC = NA, NT = NA, VU = NA, EN = NA, CR = NA, EX = NA)
   for (i in years){
-    Probabilities[i,2:7] <- pmatrix.msm(model, t=i)[,"EX"]
+    Probabilities[i,2:7] <- pmatrix.msm(model, t=i)[,state]
   }
   return(Probabilities)
 }
 
-Boot_probs <- function(Boot_models, years = c(1:100)){
-  Boot_probabilities<-lapply(Boot_models, Extract_probs, years = years)
+Boot_probs <- function(Boot_models, years = c(1:100), state = "EX"){
+  Boot_probabilities<-lapply(Boot_models, Extract_probs, years = years, state = state)
   Boot_probabilities <- bind_rows(Boot_probabilities, .id = "column_label")
   return(Boot_probabilities)
 }
 
 
-Run_bootmarkov <- function(Historic_assess, Q){
+Run_bootmarkov <- function(Historic_assess, Q, years = 1:100, state = "EX"){
   ### Overall model
   msm_model <- Run_Markov(Historic_assess, Q)
   
@@ -83,10 +83,10 @@ Run_bootmarkov <- function(Historic_assess, Q){
   }
   
   # Extract the probabilities to save or graph
-  Boot_Probs <- Boot_probs(Boot_models = Boot_models)
+  Boot_Probs <- Boot_probs(Boot_models = Boot_models, years = years, state = state)
   
   ## code to very quickly check the outcome of models
-  test <- Boot_Probs[which(Boot_Probs$Time == "100"),]
+  test <- Boot_Probs[which(Boot_Probs$Time == max(years)),]
   summ <- test %>% summarise_all(range)
   if (0 %in% summ[1,]){
     print("Some models produced a 0% chance of extinction")
