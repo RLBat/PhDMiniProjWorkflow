@@ -126,7 +126,7 @@ birds_bm_100 <- rbind(birds_heavy_100, birds_light_100)
 birds_bm_100 <- birds_bm_100 %>% mutate(V4 = fct_relevel(V4, "Light", "Heavy"))
 
 Plot_100 <- function(hundred_year){
-  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3"), name = "Body Mass")
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple"), name = "Body Mass")
   p <- p + geom_bar(stat = "identity", position = "dodge") + scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
   p <- p + labs(y = "Probability of extinction at t=100", x = "IUCN Species Threat Assessment")
   p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
@@ -139,6 +139,18 @@ Plot_100(birds_bm_100)
 
 t.test(Bird_Heavy_boot[which(Bird_Heavy_boot$Time == 100), "EN"], Bird_Light_boot[which(Bird_Light_boot$Time == 100), "EN"])
 
+### 3 way split 
+
+bird_bottom_100 <- Boot_100(bird_bottom_boot)
+bird_middle_100 <- Boot_100(bird_middle_boot)
+bird_top_100 <- Boot_100(bird_top_boot)
+
+bird_bottom_100[,4] <- "Bottom"
+bird_middle_100[,4] <- "Middle"
+bird_top_100[,4] <- "Top"
+
+birds_bm_100 <- rbind(bird_bottom_100, bird_middle_100, bird_top_100)
+Plot_100(birds_bm_100)
 
 # 
 # 
