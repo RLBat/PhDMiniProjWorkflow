@@ -109,7 +109,7 @@ for (i in (2:length(All_Mammals_ID))) {
   print(i)
 }
 write_json(All_Mammals_Habitat, "Mammal_Habitat.json")
-All_Mammals_Habitat <- read_json("Mammal_Habitat.json", simplifyVector = FALSE)
+All_Mammals_Habitat <- read_json("../Data/Yuheng/Mammal_Habitat.json", simplifyVector = FALSE)
 
 # Birds:
 All_Birds <- rl_comp_groups('birds', key = IUCN_REDLIST_KEY)
@@ -120,7 +120,8 @@ for (i in (2:length(All_Birds_ID))) {
   All_Birds_Habitat <- rbind(All_Birds_Habitat, temp)
   print(i)
 }
-write_json(All_Birds_Habitat, "Bird_Habitat.json")
+write_json(All_Birds_Habitat, "../Data/Yuheng/Bird_Habitat.json")
+All_Birds_Habitat <- read_json("../Data/Yuheng/Bird_Habitat.json", simplifyVector = FALSE)
 
 
 #######################################
