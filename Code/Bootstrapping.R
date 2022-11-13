@@ -6,6 +6,8 @@ require(tidyverse)
 
 `%!in%` = Negate(`%in%`)
 
+set.seed(333)
+
 ############################
 
 Transition_intensity_matrix <- function(Categories = c("LC", "NT", "VU", "EN", "CR", "EX")){

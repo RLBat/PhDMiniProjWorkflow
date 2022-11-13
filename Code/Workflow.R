@@ -70,6 +70,9 @@ Boot_Probs <- Run_bootmarkov(Historic_assess = Corrected_cats, Q)
 
 ######### PLOTTING ##########
 
+
+##### Isn't this just boot probs?? Replace text where possible
+
 cats <- c("LC","NT","VU", "EN","CR", "EX")
 Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
 Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
@@ -103,11 +106,13 @@ p
 #### BODY MASS ######
 
 source("Body_Mass_Processing.R")
+# Grab the species with enough data to model post-cleaning
+Final_Species_List <- Historic_assess$scientific_name
+
 
 ## MAMMALS ##
 
-# Grab the species with enough data to model post-cleaning
-Final_Species_List <- Historic_assess$scientific_name
+
 # List all mammals
 iucnmammals <- Species_Data[which(Species_Data$class_name == "MAMMALIA"),"scientific_name"]
 # Generate a list of all viable mammals
@@ -123,7 +128,23 @@ names(matched_mammal) <- c("taxonid", "scientific_name", "body_mass")
 # merge dfs to add body mass to the historic assessment data 
 Mammal_bm_assessments <- merge(Mammal_bm_assessments, matched_mammal)
 
+
+# split into sections for 2way comparison
+mammal_median <- split_bm(mammal_bm, 2)
+mammal_heavy <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_median),]
+mammal_light <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass < mammal_median),]
+
+## Run the bootstrapped models for mammals
+mammal_light_boot <- Run_bootmarkov(Historic_assess = mammal_light, Q)
+mammal_heavy_boot <- Run_bootmarkov(Historic_assess = mammal_heavy, Q)
+
+# extract values at 100 years
+mammal_light_100 <- Boot_100(mammal_light_boot)
+mammal_heavy_100 <- Boot_100(mammal_heavy_boot)
+
+
 ## BIRDS ##
+
 
 # import bird body mass data
 birds_bm <- read.csv("../Data/Yuheng/viablebirds_mass_complete.csv")
@@ -143,5 +164,123 @@ names(matched_birds) <- c("taxonid", "scientific_name", "body_mass")
 # merge dfs to add body mass to the historic assessment data 
 bird_bm_assessments <- merge(bird_bm_assessments, matched_birds)
 
+### split into sections for comparisons ## 2 way
+bird_median <- split_bm(birds_bm, 2)
+birds_light <- bird_bm_assessments[which(bird_bm_assessments$body_mass < bird_median),]
+birds_heavy <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_median),]
+
+## Run the bootstrapped models for birds
+bird_light_boot <- Run_bootmarkov(Historic_assess = birds_light, Q)
+bird_heavy_boot <- Run_bootmarkov(Historic_assess = birds_heavy, Q)
+
+## Extract values at 100 years
+birds_light_100 <- Boot_100(bird_light_boot)
+birds_heavy_100 <- Boot_100(bird_heavy_boot)
+
+#rename columns for merge
+birds_heavy_100[,4] <- "Heavy"
+birds_light_100[,4] <- "Light"
+# merge the dataframes
+birds_bm_100 <- rbind(birds_heavy_100, birds_light_100)
+names(birds_bm_100) <- c("Source", "Threat_level", "Probability", "Mass")
+#birds_bm_100 <- birds_bm_100[which(birds_bm_100$Source == "Mean"),]
+birds_bm_100 <- birds_bm_100 %>% mutate(Mass = fct_relevel(Mass, "Light", "Heavy"))
+
+## run significance tests 
+
+
+t.test(bird_heavy_boot[which(bird_heavy_boot$Time == 100), "EN"], bird_light_boot[which(bird_light_boot$Time == 100), "EN"])
+
+
+Plot_100(birds_bm_100)
+
+t.test(bird_heavy_boot[which(bird_heavy_boot$Time == 100), "EN"], bird_light_boot[which(bird_light_boot$Time == 100), "EN"])
+
+
+
+####################
+
+
+
+
+
+
+
+
+####################
+
+# Checking the Bird body mass data for CR + EX to work out the confusing outcomes with few EX examples
+
+top_probs <- Bootstrapped_probs_CRandEX(birds_top, Q)
+heavy_probs <- Bootstrapped_probs_CRandEX(birds_heavy, Q)
+
+#cats <- c("LC","NT","VU", "EN","CR", "EX")
+Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
+Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
+Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
+
+# Bind them together into one df for graphing
+Boot_output <- bind_rows(Boot_means, Boot_bottom, Boot_top, .id = "Type")
+Boot_output$Type[Boot_output$Type == 1] <- "Mean"; Boot_output$Type[Boot_output$Type == 2] <- "Bottom"; Boot_output$Type[Boot_output$Type == 3] <- "Top"
+Boot_output <- Boot_output[,1:7]
+# Convert to long format
+Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
+Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels = c("CR", "EN", "VU", "NT", "LC"))
+# only at 100 years
+Boot_output <- Boot_output[which(Boot_output$Time==100),]
+Boot_output <- within(Boot_output, rm(Time))
+
+
+##### from body_mass-processing 
+birds_heavy_100[,4] <- "Heavy"
+birds_light_100[,4] <- "Light"
+
+birds_bm_100 <- rbind(birds_heavy_100, birds_light_100)
+names(birds_bm_100) <- c("Source", "Threat_level", "Probability", "V4")
+#birds_bm_100 <- birds_bm_100[which(birds_bm_100$Source == "Mean"),]
+
+birds_bm_100 <- birds_bm_100 %>% mutate(V4 = fct_relevel(V4, "Light", "Heavy"))
+birds_bm_100$Threat_level <-factor(birds_bm_100$Threat_level, levels = cats) 
+
+Plot_100 <- function(hundred_year){
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple"), name = "Body Mass")
+  p <- p + geom_bar(stat = "identity", position = "dodge") #+ scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
+  p <- p + labs(y = "Probability of Ex or CR at t=100", x = "IUCN Species Threat Assessment")
+  p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
+  p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
+  return(p)
+}
+
+Plot_100(birds_bm_100)
+
+
+
+
+
+
+
+
+## 3 way
+bird_bottom_100[,4] <- "Bottom"
+bird_middle_100[,4] <- "Middle"
+bird_top_100[,4] <- "Top"
+
+
+#### Supp mats: redo for 3 way
+
+light_probs <- Bootstrapped_probs_CRandEX(birds_light, Q)
+bottom_probs <- Bootstrapped_probs_CRandEX(birds_bottom, Q)
+middle_probs <- Bootstrapped_probs_CRandEX(birds_middle, Q)
+
+### save as birds_x_100
+
+
+
+birds_bm_100 <- rbind(bird_bottom_100, bird_middle_100, bird_top_100)
+names(birds_bm_100) <- c("Source", "Threat_level", "Probability", "V4")
+birds_bm_100 <- birds_bm_100 %>% mutate(V4 = fct_relevel(V4, "Bottom", "Middle", "Top"))
+birds_bm_100$Threat_level <-factor(birds_bm_100$Threat_level, levels = cats) 
+Plot_100(birds_bm_100)
 
 

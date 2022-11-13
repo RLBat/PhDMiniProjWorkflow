@@ -19,11 +19,11 @@ Assess_Clean <- function(Species_History){
   # Remove all pre 1994 listings as that is when the current system was implemented
   Species_History <- subset(Species_History, Species_History$year >= 1994)
   # Select which codes to remove    
-  lose_codes <- c("I","NR","K", "R", "CT", "E", "V", "nt", "Ex/E")
+  lose_codes <- c("I","NR","K", "R", "CT", "E", "V", "Ex/E")
   # Remove those codes
   Species_History <- dplyr::filter(Species_History, !Species_History$category %in% lose_codes)
   # Now rename codes where they have several names
-  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "Ex?" = "EX", "EW" = "EX", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT")
+  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "Ex?" = "EX", "EW" = "EX", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT", "nt" = "NT")
   # Generate a df of only the years with two assessments
   Duplicates <- Species_History %>% group_by(taxonid) %>% filter(duplicated(year)|duplicated(year, fromLast=TRUE))
   # Remove these assessments as there is no way to know which order they were in

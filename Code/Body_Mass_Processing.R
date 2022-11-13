@@ -1,7 +1,11 @@
 require(dplyr)
 require(tidyverse)
+require(ggplot2)
+require(ggpubr)
 
 `%!in%` = Negate(`%in%`)
+
+set.seed(333)
 
 #######################################
 
@@ -30,59 +34,13 @@ split_bm <- function(bm_data, split_no = 3){
 
 ########### MAMMALS ######
 
-# List all mammals
-iucnmammals <- Species_Data[which(Species_Data$class_name == "MAMMALIA"),"scientific_name"]
-# Generate a list of all viable mammals
-viable_mammals <- iucnmammals[which(iucnmammals %in% Final_Species_List)]
-# import body mass data (which was manually taxon matched by Yuheng)
-mammal_bm <- read.csv("../Data/mammal_bodymass_2022.csv")
-# reduce body mass data down to viable species
-matched_mammal <- mammal_bm[which(mammal_bm$IUCN_name %in% viable_mammals),c(1,3,5)]
-
-# make a df with only the required species and add the body mass to each
-Mammal_bm_assessments <- Historic_assess[which(Historic_assess$scientific_name %in% matched_mammal$IUCN_name),]
-# rename cols for merge
-names(matched_mammal) <- c("taxonid", "scientific_name", "body_mass")
-# merge dfs to add body mass to the historic assessment data 
-Mammal_bm_assessments <- merge(Mammal_bm_assessments, matched_mammal)
-
-mammal_median <- split_bm(mammal_bm, 2)
-# split into heavy and light
-mammal_heavy <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_median),]
-mammal_light <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass < mammal_median),]
-
 mammal_thirds <- split_bm(mammal_bm, 3)
 # split into 3
 mammal_bottom <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass < mammal_thirds[1]),]
 mammal_middle <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_thirds[1] & Mammal_bm_assessments$body_mass < mammal_thirds[2]),]
 mammal_top <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_thirds[2]),]
 
-############ BIRDS ####
-
-# import bird body mass data
-birds_bm <- read.csv("../Data/Yuheng/viablebirds_mass_complete.csv")
-birds_bm <- birds_bm[,c(2:5)]
-names(birds_bm)[4] <- "body_mass"
-
-# List all birds
-iucnbirds <- Species_Data[which(Species_Data$class_name == "AVES"),"scientific_name"]
-# Generate a list of all viable birds
-viable_birds <- iucnbirds[which(iucnbirds %in% Final_Species_List)]
-# reduce body mass data down to viable species
-matched_birds <- birds_bm[which(birds_bm$IUCN_name %in% viable_birds),c(1,3,4)]
-unmatched_birds <- birds_bm[which(birds_bm$IUCN_name %!in% viable_birds),c(1,3,4)]
-
-# make a df with only the required species and add the body mass to each
-bird_bm_assessments <- Historic_assess[which(Historic_assess$scientific_name %in% matched_birds$IUCN_name),]
-# rename cols for merge
-names(matched_birds) <- c("taxonid", "scientific_name", "body_mass")
-# merge dfs to add body mass to the historic assessment data 
-bird_bm_assessments <- merge(bird_bm_assessments, matched_birds)
-
-bird_median <- split_bm(birds_bm, 2)
-# split into two
-birds_light <- bird_bm_assessments[which(bird_bm_assessments$body_mass < bird_median),]
-birds_heavy <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_median),]
+############ BIRDS ##########
 
 bird_third <- split_bm(birds_bm, 3)
 # split into three
@@ -92,7 +50,13 @@ birds_top <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_thir
 
 ###############################
 
-## Run model as per the workflow
+## Run model as per the workflow ##
+bird_heavy_boot <- read.csv("../Data/Bird_heavy_boot.csv")
+bird_light_boot <- read.csv("../Data/Bird_light_boot.csv")
+mammal_heavy_boot <- read.csv("../Data/Mammal_heavy_boot.csv")
+mammal_light_boot <- read.csv("../Data/Mammal_light_boot.csv")
+
+####
 
 Boot_100 <- function(Boot_Probs){
   cats <- c("LC","NT","VU", "EN","CR", "EX")
@@ -114,17 +78,6 @@ Boot_100 <- function(Boot_Probs){
 
 ### graphing ###
 
-birds_heavy_100 <- Boot_100(Bird_Heavy_boot)
-birds_light_100 <- Boot_100(Bird_Light_boot)
-
-birds_heavy_100[,4] <- "Heavy"
-birds_light_100[,4] <- "Light"
-
-birds_bm_100 <- rbind(birds_heavy_100, birds_light_100)
-#birds_bm_100 <- birds_bm_100[which(birds_bm_100$Source == "Mean"),]
-
-birds_bm_100 <- birds_bm_100 %>% mutate(V4 = fct_relevel(V4, "Light", "Heavy"))
-
 Plot_100 <- function(hundred_year){
   p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple"), name = "Body Mass")
   p <- p + geom_bar(stat = "identity", position = "dodge") + scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
@@ -138,6 +91,23 @@ Plot_100 <- function(hundred_year){
 Plot_100(birds_bm_100)
 
 t.test(Bird_Heavy_boot[which(Bird_Heavy_boot$Time == 100), "EN"], Bird_Light_boot[which(Bird_Light_boot$Time == 100), "EN"])
+
+significance_test_2way <- function(heavy, light, cats = c("LC","NT","VU", "EN","CR", "EX")){
+  heavy <- heavy[which(heavy$Time==100),]
+  heavy[,ncol(heavy)+1] <- "Heavy"
+  light <- light[which(light$Time==100),]
+  light[,ncol(light)+1] <- "Light"
+  bodymass <- rbind(heavy, light)
+  lapply(bodymass, function(x) t.test(x~bodymass$Mass)[c("LC","NT","VU", "EN","CR")])
+  test <- bodymass %>% map_df(~ t.test(. ~ bodymass$Mass), .id = 'var')
+  t.test(light$LC, heavy$LC)
+  t.test(light$NT, heavy$NT)
+  t.test(light$VU, heavy$VU)
+  t.test(light$EN, heavy$EN)
+  t.test(light$CR, heavy$CR)
+}
+
+
 
 ### 3 way split 
 
