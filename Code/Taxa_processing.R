@@ -1,9 +1,5 @@
-Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June21.csv", header = T, stringsAsFactors = F)
-Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
-
-# Create a vector of all species remaining after processing
-Final_Species <- unique(Corrected_cats$taxonid)
-
+#Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header = T, stringsAsFactors = F)
+#Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
 
 ########################
 
@@ -35,7 +31,9 @@ Filter_taxa <-function(Species){
   classification <- NA
   if (Species["kingdom_name"] == "PLANTAE"){
     classification <- "Plant"
-  } else if (Species["phylum_name"] != "CHORDATA"){
+  } else if (Species["kingdom_name"] != "PLANTAE" && Species["kingdom_name"] != "ANIMALIA"){
+    classification <- "Misc"
+  } else if (Species["phylum_name"] != "CHORDATA" && Species["kingdom_name"] == "ANIMALIA"){
     classification <- "Invertebrate"    
   } else if (Species["class_name"] == "AMPHIBIA"){
     classification <- "Amphibian"
@@ -58,15 +56,13 @@ Process_taxa <- function(Species_Data, Final_Species){
   # Label each species with its highest taxon
   Species_Data$Taxon <- apply(Species_Data, 1, Filter_taxa)
   # List of used taxa
-  Taxa <- c("Plant", "Invertebrate", "Amphibian", "Bird", "Mammal", "Reptile", "Fish")
+  Taxa <- c("Plant", "Misc", "Invertebrate", "Amphibian", "Bird", "Mammal", "Reptile", "Fish")
   # Get ids for each used taxa
   Taxa_index <- lapply(Taxa, function(i) unique(Species_Data$taxonid[which(Species_Data$Taxon==i)])) 
   # rename lists
   names(Taxa_index) <- Taxa
   return(Taxa_index)
 }
-
-Taxa_index<-Process_taxa(Species_Data, Final_Species)
 
 Assign_taxa <- function(Species_History, Taxa_index){
   Species_History$Taxon <- NA
@@ -77,7 +73,9 @@ Assign_taxa <- function(Species_History, Taxa_index){
   return(Species_History)
 }
 
-Corrected_cats <- Assign_taxa(Corrected_cats, Taxa_index)
+
+
+
 
 
 

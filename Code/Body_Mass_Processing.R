@@ -2,6 +2,7 @@ require(dplyr)
 require(tidyverse)
 require(ggplot2)
 require(ggpubr)
+require(gridExtra)
 
 `%!in%` = Negate(`%in%`)
 
@@ -9,12 +10,12 @@ set.seed(333)
 
 #######################################
 
-Species_Data <- read.csv("../Data/Species_Data.csv")
+Species_Data <- read.csv("../Data/Species_Data_20222.csv")
 Species <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header=T, stringsAsFactors = F)
 Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header = T, stringsAsFactors = F)
 
 # Grab the species with enough data to model post-cleaning
-Final_Species_List <- Historic_assess$scientific_name
+#Final_Species_List <- Historic_assess$scientific_name
 
 split_bm <- function(bm_data, split_no = 3){
   # initialise vecotr
@@ -34,27 +35,27 @@ split_bm <- function(bm_data, split_no = 3){
 
 ########### MAMMALS ######
 
-mammal_thirds <- split_bm(mammal_bm, 3)
-# split into 3
-mammal_bottom <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass < mammal_thirds[1]),]
-mammal_middle <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_thirds[1] & Mammal_bm_assessments$body_mass < mammal_thirds[2]),]
-mammal_top <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_thirds[2]),]
-
-############ BIRDS ##########
-
-bird_third <- split_bm(birds_bm, 3)
-# split into three
-birds_bottom <- bird_bm_assessments[which(bird_bm_assessments$body_mass < bird_third[1]),]
-birds_middle <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_third[1] & bird_bm_assessments$body_mass < bird_third[2]),]
-birds_top <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_third[2]),]
-
-###############################
-
-## Run model as per the workflow ##
-bird_heavy_boot <- read.csv("../Data/Bird_heavy_boot.csv")
-bird_light_boot <- read.csv("../Data/Bird_light_boot.csv")
-mammal_heavy_boot <- read.csv("../Data/Mammal_heavy_boot.csv")
-mammal_light_boot <- read.csv("../Data/Mammal_light_boot.csv")
+# mammal_thirds <- split_bm(mammal_bm, 3)
+# # split into 3
+# mammal_bottom <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass < mammal_thirds[1]),]
+# mammal_middle <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_thirds[1] & Mammal_bm_assessments$body_mass < mammal_thirds[2]),]
+# mammal_top <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass > mammal_thirds[2]),]
+# 
+# ############ BIRDS ##########
+# 
+# bird_third <- split_bm(birds_bm, 3)
+# # split into three
+# birds_bottom <- bird_bm_assessments[which(bird_bm_assessments$body_mass < bird_third[1]),]
+# birds_middle <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_third[1] & bird_bm_assessments$body_mass < bird_third[2]),]
+# birds_top <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_third[2]),]
+# 
+# ###############################
+# 
+# ## Run model as per the workflow ##
+# bird_heavy_boot <- read.csv("../Data/Bird_heavy_boot.csv")
+# bird_light_boot <- read.csv("../Data/Bird_light_boot.csv")
+# mammal_heavy_boot <- read.csv("../Data/Mammal_heavy_boot.csv")
+# mammal_light_boot <- read.csv("../Data/Mammal_light_boot.csv")
 
 ####
 
@@ -78,19 +79,20 @@ Boot_100 <- function(Boot_Probs){
 
 ### graphing ###
 
-Plot_100 <- function(hundred_year){
-  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple"), name = "Body Mass")
-  p <- p + geom_bar(stat = "identity", position = "dodge") + scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
-  p <- p + labs(y = "Probability of extinction at t=100", x = "IUCN Species Threat Assessment")
+Plot_100 <- function(hundred_year, ylabel = "Probability of extinction at t=100", xlabel = "IUCN Species Threat Assessment", leg_pos = c(0.2,0.8), y_limits = ylim(0,0.25)){
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = Mass)) + scale_fill_manual(values = c("darkcyan", "darkorange", "darkred"), name = "Body Mass")
+  p <- p + geom_bar(stat = "identity", position = "dodge") + scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR")) + y_limits
+  p <- p + labs(y = ylabel, x = xlabel)
   p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
   p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
-                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
+                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16), legend.position = leg_pos, legend.text = element_text(size=12), 
+                 legend.title = element_text(size=14), strip.text = element_text(size=14))
   return(p)
 }
 
-Plot_100(birds_bm_100)
+#Plot_100(birds_bm_100)
 
-t.test(Bird_Heavy_boot[which(Bird_Heavy_boot$Time == 100), "EN"], Bird_Light_boot[which(Bird_Light_boot$Time == 100), "EN"])
+#t.test(Bird_Heavy_boot[which(Bird_Heavy_boot$Time == 100), "EN"], Bird_Light_boot[which(Bird_Light_boot$Time == 100), "EN"])
 
 significance_test_2way <- function(heavy, light, cats = c("LC","NT","VU", "EN","CR", "EX")){
   heavy <- heavy[which(heavy$Time==100),]
@@ -111,16 +113,16 @@ significance_test_2way <- function(heavy, light, cats = c("LC","NT","VU", "EN","
 
 ### 3 way split 
 
-bird_bottom_100 <- Boot_100(bird_bottom_boot)
-bird_middle_100 <- Boot_100(bird_middle_boot)
-bird_top_100 <- Boot_100(bird_top_boot)
-
-bird_bottom_100[,4] <- "Bottom"
-bird_middle_100[,4] <- "Middle"
-bird_top_100[,4] <- "Top"
-
-birds_bm_100 <- rbind(bird_bottom_100, bird_middle_100, bird_top_100)
-Plot_100(birds_bm_100)
+# bird_bottom_100 <- Boot_100(bird_bottom_boot)
+# bird_middle_100 <- Boot_100(bird_middle_boot)
+# bird_top_100 <- Boot_100(bird_top_boot)
+# 
+# bird_bottom_100[,4] <- "Bottom"
+# bird_middle_100[,4] <- "Middle"
+# bird_top_100[,4] <- "Top"
+# 
+# birds_bm_100 <- rbind(bird_bottom_100, bird_middle_100, bird_top_100)
+# Plot_100(birds_bm_100)
 
 # 
 # 

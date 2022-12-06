@@ -57,9 +57,9 @@ require(tidyverse)
 
 ## trying new approach, ignore above
 
-Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header = TRUE)
+#Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header = TRUE)
 
-Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "EX"))
+#Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "EX"))
 
 #probs_noEX <- Run_bootmarkov(Species_History, Q, years = 1:100, state = "CR")
 
@@ -94,46 +94,11 @@ Bootstrapped_probs_CRandEX <- function(Historic_assess, Q, years = 1:100){
   return(Boot_Probs_Sum)
 }
 
-write.csv(Boot_Probs_Sum, "../Data/Birds_heavy_CRandEX_100", row.names = FALSE)
+#write.csv(Boot_Probs_Sum, "../Data/Birds_heavy_CRandEX_100", row.names = FALSE)
 
 ######### PLOTTING ##########
 
-#cats <- c("LC","NT","VU", "EN","CR", "EX")
-Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
-Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
-Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
 
-# Bind them together into one df for graphing
-Boot_output <- bind_rows(Boot_means, Boot_bottom, Boot_top, .id = "Type")
-Boot_output$Type[Boot_output$Type == 1] <- "Mean"; Boot_output$Type[Boot_output$Type == 2] <- "Bottom"; Boot_output$Type[Boot_output$Type == 3] <- "Top"
-Boot_output <- Boot_output[,1:7]
-# Convert to long format
-Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
-Boot_output <- spread(Boot_output, key = "Type", value = "Probability")
-
-Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels = c("CR", "EN", "VU", "NT", "LC"))
-
-######### Graphing ##############
-
-p <- ggplot(data = Boot_output, aes(x = Time, y = Mean, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "orangered3", "darkorange", "orange", "darkcyan", "lightblue"))
-p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1))
-p <- p + geom_ribbon(aes(ymin=Bottom, ymax=Top, alpha=0.5),fill="lightgrey", linetype = 2, show.legend = FALSE)
-p <- p + labs(y = "Probability of being Critically Endangered", x= "Years", colour = "Threat Level") 
-p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
-               axis.text.y = element_text(size=16), axis.text.x = element_text(size=16), axis.title = element_text(size=20), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
-p
-
-
-##################
-
-## body mass
-#converting to long
-Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
-# only at 100 years
-Boot_output <- Boot_output[which(Boot_output$Time==100),]
-Boot_output <- within(Boot_output, rm(Time))
-
-light_100yr<- Boot_output
 
 
 
