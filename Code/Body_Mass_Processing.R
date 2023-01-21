@@ -79,14 +79,14 @@ Boot_100 <- function(Boot_Probs){
 
 ### graphing ###
 
-Plot_100 <- function(hundred_year, ylabel = "Probability of extinction at t=100", xlabel = "IUCN Species Threat Assessment", leg_pos = c(0.2,0.8), y_limits = ylim(0,0.25)){
+Plot_100 <- function(hundred_year, ylabel = "Probability of extinction at t=100", xlabel = "IUCN Species Threat Assessment", leg_pos = c(0.2,0.8), y_limits = ylim(0,0.25), plottag = ""){
   p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = Mass)) + scale_fill_manual(values = c("darkcyan", "darkorange", "darkred"), name = "Body Mass")
   p <- p + geom_bar(stat = "identity", position = "dodge") + scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR")) + y_limits
-  p <- p + labs(y = ylabel, x = xlabel)
+  p <- p + labs(y = ylabel, x = xlabel, tag = plottag)
   p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
   p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
                  axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16), legend.position = leg_pos, legend.text = element_text(size=12), 
-                 legend.title = element_text(size=14), strip.text = element_text(size=14))
+                 legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "topright")
   return(p)
 }
 

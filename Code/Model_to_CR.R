@@ -96,6 +96,11 @@ Bootstrapped_probs_CRandEX <- function(Historic_assess, Q, years = 1:100){
 
 #write.csv(Boot_Probs_Sum, "../Data/Birds_heavy_CRandEX_100", row.names = FALSE)
 
+
+
+
+
+
 ######### PLOTTING ##########
 
 

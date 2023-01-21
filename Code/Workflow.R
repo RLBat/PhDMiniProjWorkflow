@@ -12,6 +12,7 @@
 Table7 <- read.csv("../Data/Table7.csv", header=TRUE, stringsAsFactors = FALSE)
 
 set.seed(333)
+setwd("Documents/PhDMiniProjWorkflow/Code/")
 
 ###########################
 
@@ -111,11 +112,17 @@ p
 
 #### TAXA ####
 
-
-# Create a vector of all species remaining after processing
-Final_Species <- unique(Corrected_cats$taxonid)
+## TEMP ##
+set.seed(333)
+setwd("Documents/PhDMiniProjWorkflow/Code/")
+Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
+source("Bootstrapping.R")
+Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "EX"))
+######
 
 source("Taxa_processing.R")
+# Create a vector of all species remaining after processing
+Final_Species <- unique(Corrected_cats$taxonid)
 
 Taxa_index<-Process_taxa(Species_Data, Final_Species)
 # Removes misc if fewer than 500 species as it wouldn't be able to run. If more than 500 species,
@@ -129,19 +136,20 @@ if (length(Taxa_index$Misc) < 500){
 Species_wTaxa <- Assign_taxa(Corrected_cats, Taxa_index)
 
 ### Run a markov model for each species group, and non-species group.
-
+### This is an ass to run and eats all the memory
 Taxa <- unique(na.omit(Species_wTaxa$Taxon))
 taxonomic_models <- c()
+not_taxonomic_models <- c()
 for (i in 1:length(Taxa)){
   taxon <- Species_wTaxa[which(Species_wTaxa$Taxon==Taxa[i]),]
   not_taxon <- Species_wTaxa[which(Species_wTaxa$Taxon!=Taxa[i]),]
-  taxonomic_models[i] <- Run_bootmarkov(taxon, Q)
-  not_taxonomic_models[i] <- Run_bootmarkov(not_taxon, Q)
+  taxonomic_models_i <- Run_bootmarkov(taxon, Q)
+  taxonomic_models[[i]] <- Boot_100(taxonomic_models_i)
+  rm(taxonomic_models_i); gc()
+  not_taxonomic_models_i <- Run_bootmarkov(not_taxon, Q)
+  not_taxonomic_models[[i]] <- Boot_100(not_taxonomic_models_i)
+  rm(not_taxonomic_models_i); gc()
 }
-
-
-
-
 
 #### BODY MASS ######
 
@@ -198,7 +206,7 @@ for (i in 1:(length(cats)-1)){
 }
 
 
-p1<-Plot_100(mammal_bm_100, xlabel = "", leg_pos = "none")
+p1<-Plot_100(mammal_bm_100,ylabel = "P(EX) at t=100", xlabel = "", leg_pos = "none", plottag = "A")
 leg <- Plot_100(mammal_bm_100) %>% get_legend() %>% as_ggplot()
 
 ## BIRDS ##
@@ -252,7 +260,7 @@ for (i in 1:(length(cats)-1)){
     bird_light_boot[which(bird_light_boot$Time == 100), cats[i]])[[3]]
 }
 
-p2 <- Plot_100(birds_bm_100, xlabel = "", ylab = "", leg_pos = "none")
+p2 <- Plot_100(birds_bm_100, xlabel = "", ylab = "", leg_pos = c(0.2,0.8), plottag = "B")
 
 #grid.arrange(grobs = list(p1,p2,leg), widths = c(2,2,1), layout_matrix = rbind(c(1,2,3), c(1,2,3)))
 
@@ -263,12 +271,12 @@ source("Model_to_CR.R")
 ## Mammals ##
 
 ## Run the bootstrapped models for mammals
-mammal_light_boot <- Bootstrapped_probs_CRandEX(Historic_assess = mammal_light, Q)
-mammal_heavy_boot <- Bootstrapped_probs_CRandEX(Historic_assess = mammal_heavy, Q)
+mammal_light_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = mammal_light, Q)
+mammal_heavy_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = mammal_heavy, Q)
 
 # extract values at 100 years
-mammal_light_100 <- Boot_100(mammal_light_boot)
-mammal_heavy_100 <- Boot_100(mammal_heavy_boot)
+mammal_light_100 <- Boot_100(mammal_light_boot2)
+mammal_heavy_100 <- Boot_100(mammal_heavy_boot2)
 
 #rename columns for merge
 mammal_heavy_100[,4] <- "Heavy"
@@ -285,18 +293,18 @@ for (i in 1:(length(cats)-1)){
                       mammal_light_boot[which(mammal_light_boot$Time == 100), cats[i]])[[3]]
 }
 
-p3<-Plot_100(mammal_bm_100, ylabel = "Probablity of being Critically Endangered\nor Extinct at t=100", 
-             xlabel = "IUCN Species Threat Assessment\nMammals", leg_pos = "none", y_limits = ylim(0,0.5))
+p3<-Plot_100(mammal_bm_100, ylabel = "P(CR or EX) at t=100", 
+             xlabel = "Red List Category\nMammals", leg_pos = "none", y_limits = ylim(0,0.5), plottag = "C")
 
 ## Birds ##
 
 ## Run the bootstrapped models for birds
-bird_light_boot <- Bootstrapped_probs_CRandEX(Historic_assess = birds_light, Q)
-bird_heavy_boot <- Bootstrapped_probs_CRandEX(Historic_assess = birds_heavy, Q)
+bird_light_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = birds_light, Q)
+bird_heavy_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = birds_heavy, Q)
 
 ## Extract values at 100 years
-birds_light_100 <- Boot_100(bird_light_boot)
-birds_heavy_100 <- Boot_100(bird_heavy_boot)
+birds_light_100 <- Boot_100(bird_light_boot2)
+birds_heavy_100 <- Boot_100(bird_heavy_boot2)
 
 #rename columns for merge
 birds_heavy_100[,4] <- "Heavy"
@@ -315,51 +323,21 @@ for (i in 1:(length(cats)-1)){
                       bird_light_boot[which(bird_light_boot$Time == 100), cats[i]])[[3]]
 }
 
-p4<-Plot_100(birds_bm_100, ylabel = "", xlabel = "IUCN Species Threat Assessment\nBirds", leg_pos = "none", y_limits = ylim(0,0.5))
+p4<-Plot_100(birds_bm_100, ylabel = "", xlabel = "Red List Category\nBirds", leg_pos = "none", y_limits = ylim(0,0.5), plottag = "D")
+
+
+pdf(file = "../Output/Body_Mass_figure.pdf", width = 12, height=8)
+grid.arrange(grobs = list(p1,p2,p3,p4), widths = c(2,2), layout_matrix = rbind(c(1,2), c(3,4)))
+
+dev.off()
 
 ####################
-# 
-# #cats <- c("LC","NT","VU", "EN","CR", "EX")
-# Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
-# Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
-# Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
-# 
-# # Bind them together into one df for graphing
-# Boot_output <- bind_rows(Boot_means, Boot_bottom, Boot_top, .id = "Type")
-# Boot_output$Type[Boot_output$Type == 1] <- "Mean"; Boot_output$Type[Boot_output$Type == 2] <- "Bottom"; Boot_output$Type[Boot_output$Type == 3] <- "Top"
-# Boot_output <- Boot_output[,1:7]
-# # Convert to long format
-# Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
-# Boot_output <- spread(Boot_output, key = "Type", value = "Probability")
-# 
-# Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels = c("CR", "EN", "VU", "NT", "LC"))
-# 
-# ######### Graphing ##############
-# 
-# p <- ggplot(data = Boot_output, aes(x = Time, y = Mean, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "orangered3", "darkorange", "orange", "darkcyan", "lightblue"))
-# p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1))
-# p <- p + geom_ribbon(aes(ymin=Bottom, ymax=Top, alpha=0.5),fill="lightgrey", linetype = 2, show.legend = FALSE)
-# p <- p + labs(y = "Probability of being Critically Endangered", x= "Years", colour = "Threat Level") 
-# p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
-#                axis.text.y = element_text(size=16), axis.text.x = element_text(size=16), axis.title = element_text(size=20), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
-# p
 
 
-##################
-
-## body mass
-#converting to long
-# Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
-# # only at 100 years
-# Boot_output <- Boot_output[which(Boot_output$Time==100),]
-# Boot_output <- within(Boot_output, rm(Time))
-# 
-# light_100yr<- Boot_output
-
-grid.arrange(grobs = list(p1,p2,leg,p3,p4), widths = c(2,2,1), layout_matrix = rbind(c(1,2,3), c(4,5,3)))
 
 
-####################
+
+### sandbox TO CLEAN ####
 
 # Checking the Bird body mass data for CR + EX to work out the confusing outcomes with few EX examples
 
