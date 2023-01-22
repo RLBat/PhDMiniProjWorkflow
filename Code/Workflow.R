@@ -219,29 +219,15 @@ Taxa_comp<- combine(Mammals, Birds, Reptiles, Amphibians, Fish, Invertebrates, P
 is.na(Taxa_comp) <- sapply(Taxa_comp, is.infinite)
 Taxa_comp[is.na(Taxa_comp)] <- -2
 
-#write.csv(Taxa_comp, file = "../Data/taxa_full.csv", row.names = FALSE)
+# write.csv(Taxa_comp, file = "../Data/taxa_full.csv", row.names = FALSE)
 
+p1 <- plot_taxa(threat_level = 1, xaxis = "", xlabels = element_blank())
+p2 <- plot_taxa(threat_level = 2, xaxis = "", xlabels = element_blank(), yaxis = "")
+p3 <- plot_taxa(threat_level = 3)
+p4 <- plot_taxa(threat_level = 4, yaxis = "")
+p5 <- plot_taxa(threat_level = 5, yaxis = "")
 
-#aight let's plot this bish
-cats <- c("LC","NT","VU", "EN","CR")
-categories <- c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered")
-plots <- list()
-#split by threat
-for (i in 1:length(cats)){
-  p <- ggplot(data = subset(Taxa_comp, Source %in% c("Median") & Threat_level %in% cats[i]), aes(x = source, y = Probability))
-  p <- p + geom_bar(stat = "identity", position = "dodge", fill = "grey") + #scale_x_discrete(labels=c("Mammal", "Reptile", "Fish", "Invertebrate", "Amphibian", "Plant", "Bird")) +
-    labs(x = "Taxonomic Group", tag = categories[i], y = "Comparative Extinction Risk") #+ ylim(-2,2)
-  #+  scale_fill_manual(values = c("lightblue", "darkcyan", "orange", "darkorange", "orangered3", "darkred"))
-  p <- p + geom_errorbar(aes(ymin= Taxa_comp$Probability[Taxa_comp$Source == "Bottom" & Taxa_comp$Threat_level == cats[i]], ymax=Taxa_comp$Probability[Taxa_comp$Source == "Top" & Taxa_comp$Threat_level == cats[i]]), width=.2, position=position_dodge(.9)) 
-  p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
-                 axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
-                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16, angle = 90,  hjust = 0.8, vjust = 0.5), 
-                 legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "top", plot.tag = element_text(size = 24))+
-    geom_hline(yintercept = 0)
-  plots[[i]] <- p
-}
-
-grid.arrange(grobs = list(plots[[1]],plots[[2]],plots[[3]],plots[[4]], plots[[5]]), ncol = 3)
+grid.arrange(grobs = list(p1, p2, p3, p4, p5), layout_matrix = rbind(c(1,2,NA), c(3, 4,5)), heights = 4:5)
 
 
 
