@@ -1,4 +1,6 @@
 require(ggplot2)
+require(gdata)
+require(gridExtra)
 
 Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header = T, stringsAsFactors = F)
 #Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
@@ -75,70 +77,20 @@ Assign_taxa <- function(Species_History, Taxa_index){
   return(Species_History)
 }
 
-
-# write.csv(taxonomic_models[[1]], file = "../Data/taxa_mammal.csv")
-# write.csv(not_taxonomic_models[[1]], file = "../Data/taxa_notmammal.csv")
-# write.csv(taxonomic_models[[2]], file = "../Data/taxa_reptile.csv")
-# write.csv(not_taxonomic_models[[2]], file = "../Data/taxa_notreptile.csv")
-# write.csv(taxonomic_models[[3]], file = "../Data/taxa_fish.csv")
-# write.csv(not_taxonomic_models[[3]], file = "../Data/taxa_notfish.csv")
-# write.csv(taxonomic_models[[4]], file = "../Data/taxa_invert.csv")
-# write.csv(not_taxonomic_models[[4]], file = "../Data/taxa_notinvert.csv")
-# write.csv(taxonomic_models[[5]], file = "../Data/taxa_amphib.csv")
-# write.csv(not_taxonomic_models[[5]], file = "../Data/taxa_notamphib.csv")
-# write.csv(taxonomic_models[[6]], file = "../Data/taxa_plant.csv")
-# write.csv(not_taxonomic_models[[6]], file = "../Data/taxa_notplant.csv")
-# write.csv(taxonomic_models[[7]], file = "../Data/taxa_bird.csv")
-# write.csv(not_taxonomic_models[[7]], file = "../Data/taxa_notbird.csv")
-
-mammal <- read.csv(file = "../Data/taxa_mammal.csv")
-notmammal <- read.csv(file = "../Data/taxa_notmammal.csv")
-reptile <- read.csv(file = "../Data/taxa_reptile.csv")
-notreptile <- read.csv(file = "../Data/taxa_notreptile.csv")
-fish <- read.csv(file = "../Data/taxa_fish.csv")
-notfish <- read.csv(file = "../Data/taxa_notfish.csv")
-invert <- read.csv(file = "../Data/taxa_invert.csv")
-notinvert <- read.csv(file = "../Data/taxa_notinvert.csv")
-amphib <- read.csv(file = "../Data/taxa_amphib.csv")
-notamphib <- read.csv(file = "../Data/taxa_notamphib.csv")
-plant <- read.csv(file = "../Data/taxa_plant.csv")
-notplant <- read.csv(file = "../Data/taxa_notplant.csv")
-bird <- read.csv(file = "../Data/taxa_bird.csv")
-notbird <- read.csv(file = "../Data/taxa_notbird.csv")
-
-##### calculate the ratios
-
-## start with just the mean
-
-Mammals <- full_join(mammal, notmammal, by = c("X","Source", "Threat_level"))
-Reptiles <- full_join(reptile, notreptile, by = c("X","Source", "Threat_level"))
-Fish<- full_join(fish, notfish, by = c("X","Source", "Threat_level"))
-Invertebrates<- full_join(invert, notinvert, by = c("X","Source", "Threat_level"))
-Amphibians <- full_join(amphib, notamphib, by = c("X","Source", "Threat_level"))
-Plants <- full_join(plant, notplant, by = c("X","Source", "Threat_level"))
-Birds <- full_join(bird, notbird, by = c("X","Source", "Threat_level"))
-
-Taxa_comp <- combine(Mammals, Reptiles, Fish, Invertebrates, Amphibians, Plants, Birds)
-Taxa_comp$ratio <- log(Taxa_comp$Probability.x/Taxa_comp$Probability.y)
-Taxa_comp$Threat_level <- as.factor(Taxa_comp$Threat_level)
-
-
-#aight let's plot this bish
-
-#split by threat
-p <- ggplot(data = subset(Taxa_comp, Source %in% c("Mean") & Threat_level %in% c("5")), aes(x = source, y = ratio))
-p <- p + geom_bar(stat = "identity", position = "dodge", fill = "black") + #scale_x_discrete(labels=c("Mammal", "Reptile", "Fish", "Invertebrate", "Amphibian", "Plant", "Bird")) +
-  labs(x = "Taxonomic Group", tag = "Critically Endangered") + ylim(-2,2)
+plot_taxa <- function (threat_level){
+  i <- threat_level
+  p <- ggplot(data = subset(Taxa_comp, Source %in% c("Median") & Threat_level %in% cats[i]), aes(x = source, y = Probability))
+  p <- p + geom_bar(stat = "identity", position = "dodge", fill = "grey") + #scale_x_discrete(labels=c("Mammal", "Reptile", "Fish", "Invertebrate", "Amphibian", "Plant", "Bird")) +
+    labs(x = "Taxonomic Group", tag = categories[i], y = "Comparative Extinction Risk") #+ ylim(-2,2)
   #+  scale_fill_manual(values = c("lightblue", "darkcyan", "orange", "darkorange", "orangered3", "darkred"))
-p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
-               axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
-               axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16, angle = 90,  hjust = 0.9), 
-               legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "top")
-p
-
-
-
-
+  p <- p + geom_errorbar(aes(ymin= Taxa_comp$Probability[Taxa_comp$Source == "Bottom" & Taxa_comp$Threat_level == cats[i]], ymax=Taxa_comp$Probability[Taxa_comp$Source == "Top" & Taxa_comp$Threat_level == cats[i]]), width=.2, position=position_dodge(.9)) 
+  p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
+                 axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16, angle = 90,  hjust = 0.8, vjust = 0.5), 
+                 legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "top", plot.tag = element_text(size = 24))+
+    geom_hline(yintercept = 0)
+  return(p)
+}
 
 
 

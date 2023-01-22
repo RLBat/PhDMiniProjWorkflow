@@ -144,14 +144,112 @@ for (i in 1:length(Taxa)){
   taxon <- Species_wTaxa[which(Species_wTaxa$Taxon==Taxa[i]),]
   not_taxon <- Species_wTaxa[which(Species_wTaxa$Taxon!=Taxa[i]),]
   taxonomic_models_i <- Run_bootmarkov(taxon, Q)
-  taxonomic_models[[i]] <- Boot_100(taxonomic_models_i)
+  taxonomic_models[[i]] <- taxonomic_models_i[which(taxonomic_models_i$Time == 100),]
   rm(taxonomic_models_i); gc()
   not_taxonomic_models_i <- Run_bootmarkov(not_taxon, Q)
-  not_taxonomic_models[[i]] <- Boot_100(not_taxonomic_models_i)
+  not_taxonomic_models[[i]] <- not_taxonomic_models_i[which(not_taxonomic_models_i$Time == 100),]
   rm(not_taxonomic_models_i); gc()
 }
 
+# write.csv(taxonomic_models[[1]][,c(1,3:7)], file = "../Data/taxa_mammal.csv", row.names = FALSE)
+# write.csv(not_taxonomic_models[[1]][,c(1,3:7)], file = "../Data/taxa_notmammal.csv", row.names = FALSE)
+# write.csv(taxonomic_models[[2]][,c(1,3:7)], file = "../Data/taxa_reptile.csv", row.names = FALSE)
+# write.csv(not_taxonomic_models[[2]][,c(1,3:7)], file = "../Data/taxa_notreptile.csv", row.names = FALSE)
+# write.csv(taxonomic_models[[3]][,c(1,3:7)], file = "../Data/taxa_fish.csv", row.names = FALSE)
+# write.csv(not_taxonomic_models[[3]][,c(1,3:7)], file = "../Data/taxa_notfish.csv", row.names = FALSE)
+# write.csv(taxonomic_models[[4]][,c(1,3:7)], file = "../Data/taxa_invert.csv", row.names = FALSE)
+# write.csv(not_taxonomic_models[[4]][,c(1,3:7)], file = "../Data/taxa_notinvert.csv", row.names = FALSE)
+# write.csv(taxonomic_models[[5]][,c(1,3:7)], file = "../Data/taxa_amphib.csv", row.names = FALSE)
+# write.csv(not_taxonomic_models[[5]][,c(1,3:7)], file = "../Data/taxa_notamphib.csv", row.names = FALSE)
+# write.csv(taxonomic_models[[6]][,c(1,3:7)], file = "../Data/taxa_plant.csv", row.names = FALSE)
+# write.csv(not_taxonomic_models[[6]][,c(1,3:7)], file = "../Data/taxa_notplant.csv", row.names = FALSE)
+# write.csv(taxonomic_models[[7]][,c(1,3:7)], file = "../Data/taxa_bird.csv", row.names = FALSE)
+# write.csv(not_taxonomic_models[[7]][,c(1,3:7)], file = "../Data/taxa_notbird.csv", row.names = FALSE)
+
+
+### Read in the data
+mammal <- read.csv(file = "../Data/taxa_mammal.csv")
+notmammal <- read.csv(file = "../Data/taxa_notmammal.csv")
+reptile <- read.csv(file = "../Data/taxa_reptile.csv")
+notreptile <- read.csv(file = "../Data/taxa_notreptile.csv")
+fish <- read.csv(file = "../Data/taxa_fish.csv")
+notfish <- read.csv(file = "../Data/taxa_notfish.csv")
+invert <- read.csv(file = "../Data/taxa_invert.csv")
+notinvert <- read.csv(file = "../Data/taxa_notinvert.csv")
+amphib <- read.csv(file = "../Data/taxa_amphib.csv")
+notamphib <- read.csv(file = "../Data/taxa_notamphib.csv")
+plant <- read.csv(file = "../Data/taxa_plant.csv")
+notplant <- read.csv(file = "../Data/taxa_notplant.csv")
+bird <- read.csv(file = "../Data/taxa_bird.csv")
+notbird <- read.csv(file = "../Data/taxa_notbird.csv")
+
+### get uncertainties
+
+taxa_summary <- function(taxa, nottaxa){
+  if (ncol(taxa) == 5){
+    taxa$column_label <- 1:nrow(taxa)
+    taxa <- taxa[,c(6,1,2,3,4,5)]
+  }
+  if (ncol(nottaxa) == 5){
+    nottaxa$column_label <- 1:nrow(nottaxa)
+    nottaxa <- nottaxa[,c(6,1,2,3,4,5)]
+  }
+  taxadb <- full_join(pivot_longer(taxa, cols = c(2:6), names_to = "Threat_level", values_to = "Probability"), pivot_longer(nottaxa, cols = c(2:6), names_to = "Threat_level", values_to = "Probability"), by = "column_label")
+  taxadb <- taxadb[which(taxadb$Threat_level.x == taxadb$Threat_level.y),]
+  taxadb$ratio <- log(taxadb$Probability.x/taxadb$Probability.y)
+  Median <- taxadb %>% group_by(Threat_level.x) %>% summarise_at("ratio", median)
+  Top <-  taxadb %>% group_by(Threat_level.x) %>% summarise_at("ratio", ~quantile(.x, c(.975)))
+  Bottom <-  taxadb %>% group_by(Threat_level.x) %>% summarise_at("ratio", ~quantile(.x, c(.025)))
+  taxa_summ <- combine(Median, Top, Bottom)
+  names(taxa_summ) <- c("Threat_level", "Probability", "Source")
+  return(taxa_summ)
+}
+
+## Get for each group
+Mammals <- taxa_summary(mammal, notmammal)
+Reptiles <- taxa_summary(reptile, notreptile)
+Fish <- taxa_summary(fish, notfish)
+Invertebrates <- taxa_summary(invert, notinvert)
+Amphibians <- taxa_summary(amphib, notamphib)
+Plants <- taxa_summary(plant, notplant)
+Birds <- taxa_summary(bird, notbird)
+
+#combine into one df for graphing
+Taxa_comp<- combine(Mammals, Birds, Reptiles, Amphibians, Fish, Invertebrates, Plants)
+is.na(Taxa_comp) <- sapply(Taxa_comp, is.infinite)
+Taxa_comp[is.na(Taxa_comp)] <- -2
+
+#write.csv(Taxa_comp, file = "../Data/taxa_full.csv", row.names = FALSE)
+
+
+#aight let's plot this bish
+cats <- c("LC","NT","VU", "EN","CR")
+categories <- c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered")
+plots <- list()
+#split by threat
+for (i in 1:length(cats)){
+  p <- ggplot(data = subset(Taxa_comp, Source %in% c("Median") & Threat_level %in% cats[i]), aes(x = source, y = Probability))
+  p <- p + geom_bar(stat = "identity", position = "dodge", fill = "grey") + #scale_x_discrete(labels=c("Mammal", "Reptile", "Fish", "Invertebrate", "Amphibian", "Plant", "Bird")) +
+    labs(x = "Taxonomic Group", tag = categories[i], y = "Comparative Extinction Risk") #+ ylim(-2,2)
+  #+  scale_fill_manual(values = c("lightblue", "darkcyan", "orange", "darkorange", "orangered3", "darkred"))
+  p <- p + geom_errorbar(aes(ymin= Taxa_comp$Probability[Taxa_comp$Source == "Bottom" & Taxa_comp$Threat_level == cats[i]], ymax=Taxa_comp$Probability[Taxa_comp$Source == "Top" & Taxa_comp$Threat_level == cats[i]]), width=.2, position=position_dodge(.9)) 
+  p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
+                 axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16, angle = 90,  hjust = 0.8, vjust = 0.5), 
+                 legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "top", plot.tag = element_text(size = 24))+
+    geom_hline(yintercept = 0)
+  plots[[i]] <- p
+}
+
+grid.arrange(grobs = list(plots[[1]],plots[[2]],plots[[3]],plots[[4]], plots[[5]]), ncol = 3)
+
+
+
+######################
+
 #### BODY MASS ######
+
+#####################
 
 source("Body_Mass_Processing.R")
 # Grab the species with enough data to model post-cleaning
