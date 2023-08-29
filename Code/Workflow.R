@@ -1,7 +1,3 @@
-
-
-
-
 # Author: Ryan Bates (r.bates18@imperial.ac.uk)
 # Date: 05/02/2020
 
@@ -31,7 +27,7 @@ setwd("Documents/PhDMiniProjWorkflow/Code/")
 
 ### OR SKIP AND USE THE FOLLOWING ##
 
-Species_History <- read.csv("../Data/Species_History_IDs_20223.csv", stringsAsFactors = T)
+#Species_History <- read.csv("../Data/Species_History_IDs_20223.csv", stringsAsFactors = T)
 Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
 
 #########################
@@ -61,7 +57,7 @@ Species_History_Tags <- Generate_tags(Species_History, Cat_probs)
 # Final cleaning steps
 Corrected_cats <- Final_clean(Species_History_Tags)
 
-#Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", stringsAsFactors = T)
+# Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", stringsAsFactors = T)
 
 #######################
 
@@ -76,9 +72,6 @@ Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "
 Boot_Probs <- Run_bootmarkov(Historic_assess = Corrected_cats, Q)
 
 ######### PLOTTING ##########
-
-
-##### Isn't this just boot probs?? Replace text where possible
 
 cats <- c("LC","NT","VU", "EN","CR", "EX")
 Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
@@ -95,14 +88,18 @@ Boot_output <- spread(Boot_output, key = "Type", value = "Probability")
 
 Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels = c("CR", "EN", "VU", "NT", "LC"))
 
+#write.csv(Boot_output, "../Data/Overallbootoutput.csv", row.names = FALSE)
+# Boot_output <- read.csv("../Data/Overallbootoutput.csv")
 ######### Graphing ##############
 
-p <- ggplot(data = Boot_output, aes(x = Time, y = Mean, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "orangered3", "darkorange", "orange", "darkcyan", "lightblue"))
-p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1))
+p <- ggplot(data = Boot_output, aes(x = Time, y = Mean, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "darkorange", "gold", "darkcyan", "lightblue"))
+p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1), minor_breaks = seq(0,1,0.01))
 p <- p + geom_ribbon(aes(ymin=Bottom, ymax=Top, alpha=0.5),fill="lightgrey", linetype = 2, show.legend = FALSE)
-p <- p + labs(y = "Probability of extinction", x= "Years", colour = "Threat Level") 
+p <- p + labs(y = "Probability of extinction", x= "Time (years)", colour = "Red List Cateogry") 
 p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
-               axis.text.y = element_text(size=16), axis.text.x = element_text(size=16), axis.title = element_text(size=20), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
+               axis.text.y = element_text(size=16), axis.text.x = element_text(size=16), axis.title = element_text(size=20), 
+               legend.position = c(0.2,0.8), legend.text = element_text(size=14), legend.title = element_text(size=16), strip.text = element_text(size=14))
+p <- p + ylim(0,0.2)
 p
 
 
@@ -112,13 +109,6 @@ p
 
 #### TAXA ####
 
-## TEMP ##
-set.seed(333)
-setwd("Documents/PhDMiniProjWorkflow/Code/")
-Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
-source("Bootstrapping.R")
-Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "EX"))
-######
 
 source("Taxa_processing.R")
 # Create a vector of all species remaining after processing
@@ -170,8 +160,8 @@ for (i in 1:length(Taxa)){
 ### Read in the data
 mammal <- read.csv(file = "../Data/taxa_mammal.csv")
 notmammal <- read.csv(file = "../Data/taxa_notmammal.csv")
-reptile <- read.csv(file = "../Data/taxa_reptile.csv")
-notreptile <- read.csv(file = "../Data/taxa_notreptile.csv")
+#reptile <- read.csv(file = "../Data/taxa_reptile.csv")
+#notreptile <- read.csv(file = "../Data/taxa_notreptile.csv")
 fish <- read.csv(file = "../Data/taxa_fish.csv")
 notfish <- read.csv(file = "../Data/taxa_notfish.csv")
 invert <- read.csv(file = "../Data/taxa_invert.csv")
@@ -200,10 +190,39 @@ taxa_summary <- function(taxa, nottaxa){
   Median <- taxadb %>% group_by(Threat_level.x) %>% summarise_at("ratio", median)
   Top <-  taxadb %>% group_by(Threat_level.x) %>% summarise_at("ratio", ~quantile(.x, c(.975)))
   Bottom <-  taxadb %>% group_by(Threat_level.x) %>% summarise_at("ratio", ~quantile(.x, c(.025)))
-  taxa_summ <- combine(Median, Top, Bottom)
+  taxa_summ <- gdata::combine(Median, Top, Bottom)
   names(taxa_summ) <- c("Threat_level", "Probability", "Source")
   return(taxa_summ)
 }
+
+# get significance values
+p_values_taxa <- c()
+Taxa <- unique(na.omit(Species_wTaxa$Taxon))[c(1,3:7)]
+for (i in 1:(length(cats)-1)){
+  p_values_taxa[i]<-t.test(mammal[, cats[i]], notmammal[, cats[i]])[[3]]
+}
+for (i in 1:(length(cats)-1)){
+  p_values_taxa[i+5]<-t.test(fish[, cats[i]], notfish[, cats[i]])[[3]]
+}
+for (i in 1:(length(cats)-1)){
+  p_values_taxa[i+10]<-t.test(invert[, cats[i]], notinvert[, cats[i]])[[3]]
+}
+for (i in 1:(length(cats)-1)){
+  p_values_taxa[i+15]<-t.test(amphib[, cats[i]], notamphib[, cats[i]])[[3]]
+}
+for (i in 1:(length(cats)-1)){
+  p_values_taxa[i+20]<-t.test(plant[, cats[i]], notplant[, cats[i]])[[3]]
+}
+for (i in 1:(length(cats)-1)){
+  p_values_taxa[i+25]<-t.test(bird[, cats[i]], notbird[, cats[i]])[[3]]
+}
+p_values_taxa <- p.adjust(p_values_taxa, method = "bonferroni")
+
+all_taxa <- matrix(p_values_taxa, nrow = 5)
+all_taxa <- as.data.frame(all_taxa)
+names(all_taxa) <- Taxa
+
+#write.csv(all_taxa, "../Data/Pvalues_taxa_corrected.csv", row.names = FALSE)
 
 ## Get for each group
 Mammals <- taxa_summary(mammal, notmammal)
@@ -215,21 +234,29 @@ Plants <- taxa_summary(plant, notplant)
 Birds <- taxa_summary(bird, notbird)
 
 #combine into one df for graphing
-Taxa_comp<- combine(Mammals, Birds, Reptiles, Amphibians, Fish, Invertebrates, Plants)
-is.na(Taxa_comp) <- sapply(Taxa_comp, is.infinite)
-Taxa_comp[is.na(Taxa_comp)] <- -2
+Taxa_comp <- gdata::combine(Mammals, Birds, Amphibians, Fish, Invertebrates, Plants)
 
 # write.csv(Taxa_comp, file = "../Data/taxa_full.csv", row.names = FALSE)
+Taxa_comp <- read.csv("../Data/taxa_full.csv", header = T)
 
-p1 <- plot_taxa(threat_level = 1, xaxis = "", xlabels = element_blank())
-p2 <- plot_taxa(threat_level = 2, xaxis = "", xlabels = element_blank(), yaxis = "")
+catcols <- c("lightblue", "darkcyan", "gold", "darkorange2", "darkred")
+Taxa_comp$Threat_level <- factor(Taxa_comp$Threat_level, levels = c("LC","NT", "VU", "EN", "CR"))
+leg <- ggplot(data = Taxa_comp, aes(Probability, fill = Threat_level)) + geom_bar() +
+  scale_fill_manual(values = catcols, name = "Red List Category", 
+                    labels = c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered")) +
+  theme(legend.title = element_text(size = 20), legend.text = element_text(size = 18))
+leg <- cowplot::get_legend(leg)
+p1 <- plot_taxa(threat_level = 1, xaxis = "", xlabels = element_blank()) + 
+  annotate("text", x=3,y=2,label = "†")
+p2 <- plot_taxa(threat_level = 2, xaxis = "", xlabels = element_blank(), yaxis = "") +
+  annotate("text", x=3,y=2,label = "†")
 p3 <- plot_taxa(threat_level = 3)
 p4 <- plot_taxa(threat_level = 4, yaxis = "")
 p5 <- plot_taxa(threat_level = 5, yaxis = "")
 
-grid.arrange(grobs = list(p1, p2, p3, p4, p5), layout_matrix = rbind(c(1,2,NA), c(3, 4,5)), heights = 4:5)
-
-
+cairo_pdf(file = "../Output/Taxa_figure_140323.pdf", width = 12, height=8)
+grid.arrange(grobs = list(p1, p2, p3, p4, p5, leg), layout_matrix = rbind(c(1,2, 6), c(3, 4,5)), heights = 4:5)
+dev.off()
 
 ######################
 
@@ -239,7 +266,7 @@ grid.arrange(grobs = list(p1, p2, p3, p4, p5), layout_matrix = rbind(c(1,2,NA), 
 
 source("Body_Mass_Processing.R")
 # Grab the species with enough data to model post-cleaning
-Final_Species_List <- Historic_assess$scientific_name
+Final_Species_List <- unique(Corrected_cats$scientific_name)
 
 
 ## MAMMALS ##
@@ -270,6 +297,9 @@ mammal_light <- Mammal_bm_assessments[which(Mammal_bm_assessments$body_mass < ma
 mammal_light_boot <- Run_bootmarkov(Historic_assess = mammal_light, Q)
 mammal_heavy_boot <- Run_bootmarkov(Historic_assess = mammal_heavy, Q)
 
+mammal_light_boot <- read.csv("../Data/Mammal_light_boot.csv", header = T)
+mammal_heavy_boot <- read.csv("../Data/Mammal_heavy_boot.csv", header = T)
+
 # extract values at 100 years
 mammal_light_100 <- Boot_100(mammal_light_boot)
 mammal_heavy_100 <- Boot_100(mammal_heavy_boot)
@@ -283,14 +313,14 @@ names(mammal_bm_100) <- c("Source", "Threat_level", "Probability", "Mass")
 #birds_bm_100 <- birds_bm_100[which(birds_bm_100$Source == "Mean"),]
 mammal_bm_100 <- mammal_bm_100 %>% mutate(Mass = fct_relevel(Mass, "Light", "Heavy"))
 
-p_values <- c()
+p_values_mammal <- c()
 for (i in 1:(length(cats)-1)){
-  p_values[i]<-t.test(mammal_heavy_boot[which(mammal_heavy_boot$Time == 100), cats[i]], 
+  p_values_mammal[i]<-t.test(mammal_heavy_boot[which(mammal_heavy_boot$Time == 100), cats[i]], 
     mammal_light_boot[which(mammal_light_boot$Time == 100), cats[i]])[[3]]
 }
 
-
-p1<-Plot_100(mammal_bm_100,ylabel = "P(EX) at t=100", xlabel = "", leg_pos = "none", plottag = "A")
+p1<-Plot_100(mammal_bm_100,ylabel = "P(EX) at t=100", xlabel = "", leg_pos = "none", plottag = "A") +
+  annotate("text", x=5, y=0.24, label = "†")
 leg <- Plot_100(mammal_bm_100) %>% get_legend() %>% as_ggplot()
 
 ## BIRDS ##
@@ -317,11 +347,14 @@ bird_bm_assessments <- merge(bird_bm_assessments, matched_birds)
 ### split into sections for comparisons ## 2 way
 bird_median <- split_bm(birds_bm, 2)
 birds_light <- bird_bm_assessments[which(bird_bm_assessments$body_mass < bird_median),]
-birds_heavy <- bird_bm_assessments[which(bird_bm_assessments$body_mass > bird_median),]
+birds_heavy <- bird_bm_assessments[which(bird_bm_assessments$body_mass > mammal_median),]
 
 ## Run the bootstrapped models for birds
 bird_light_boot <- Run_bootmarkov(Historic_assess = birds_light, Q)
 bird_heavy_boot <- Run_bootmarkov(Historic_assess = birds_heavy, Q)
+
+bird_light_boot <- read.csv("../Data/Bird_light_boot.csv", header = T)
+bird_heavy_boot <- read.csv("../Data/Bird_heavy_boot.csv", header = T)
 
 ## Extract values at 100 years
 birds_light_100 <- Boot_100(bird_light_boot)
@@ -338,9 +371,9 @@ birds_bm_100 <- birds_bm_100 %>% mutate(Mass = fct_relevel(Mass, "Light", "Heavy
 
 ## run significance tests 
 
-p_values <- c()
+p_values_bird <- c()
 for (i in 1:(length(cats)-1)){
-  p_values[i]<-t.test(bird_heavy_boot[which(bird_heavy_boot$Time == 100), cats[i]], 
+  p_values_bird[i]<-t.test(bird_heavy_boot[which(bird_heavy_boot$Time == 100), cats[i]], 
     bird_light_boot[which(bird_light_boot$Time == 100), cats[i]])[[3]]
 }
 
@@ -358,6 +391,9 @@ source("Model_to_CR.R")
 mammal_light_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = mammal_light, Q)
 mammal_heavy_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = mammal_heavy, Q)
 
+mammal_light_boot2 <- read.csv("../Data/mammal_light_boot2_140323.csv", header = T)
+mammal_heavy_boot2 <- read.csv("../Data/mammal_heavy_boot2_140323.csv", header = T)
+
 # extract values at 100 years
 mammal_light_100 <- Boot_100(mammal_light_boot2)
 mammal_heavy_100 <- Boot_100(mammal_heavy_boot2)
@@ -371,10 +407,10 @@ names(mammal_bm_100) <- c("Source", "Threat_level", "Probability", "Mass")
 #birds_bm_100 <- birds_bm_100[which(birds_bm_100$Source == "Mean"),]
 mammal_bm_100 <- mammal_bm_100 %>% mutate(Mass = fct_relevel(Mass, "Light", "Heavy"))
 
-p_values <- c()
+p_values_mammalCREX <- c()
 for (i in 1:(length(cats)-1)){
-  p_values[i]<-t.test(mammal_heavy_boot[which(mammal_heavy_boot$Time == 100), cats[i]], 
-                      mammal_light_boot[which(mammal_light_boot$Time == 100), cats[i]])[[3]]
+  p_values_mammalCREX[i]<-t.test(mammal_heavy_boot2[which(mammal_heavy_boot2$Time == 100), cats[i]], 
+                      mammal_light_boot2[which(mammal_light_boot2$Time == 100), cats[i]])[[3]]
 }
 
 p3<-Plot_100(mammal_bm_100, ylabel = "P(CR or EX) at t=100", 
@@ -385,6 +421,9 @@ p3<-Plot_100(mammal_bm_100, ylabel = "P(CR or EX) at t=100",
 ## Run the bootstrapped models for birds
 bird_light_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = birds_light, Q)
 bird_heavy_boot2 <- Bootstrapped_probs_CRandEX(Historic_assess = birds_heavy, Q)
+
+bird_light_boot2 <-read.csv("../Data/bird_light_boot2.csv", header = T)
+bird_heavy_boot2 <- read.csv("../Data/bird_heavy_boot2.csv", header = T)
 
 ## Extract values at 100 years
 birds_light_100 <- Boot_100(bird_light_boot2)
@@ -401,21 +440,162 @@ birds_bm_100 <- birds_bm_100 %>% mutate(Mass = fct_relevel(Mass, "Light", "Heavy
 
 ## run significance tests 
 
-p_values <- c()
+p_values_birdCREX <- c()
 for (i in 1:(length(cats)-1)){
-  p_values[i]<-t.test(bird_heavy_boot[which(bird_heavy_boot$Time == 100), cats[i]], 
-                      bird_light_boot[which(bird_light_boot$Time == 100), cats[i]])[[3]]
+  p_values_birdCREX[i]<-t.test(bird_heavy_boot2[which(bird_heavy_boot2$Time == 100), cats[i]], 
+                      bird_light_boot2[which(bird_light_boot2$Time == 100), cats[i]])[[3]]
 }
+
+p_values_mass <- c(p_values_bird, p_values_birdCREX, p_values_mammal, p_values_mammalCREX)
+p_values_mass <- p.adjust(p_values_mass, method = "bonferroni")
+
+all_mass <- matrix(p_values_mass, nrow = 5)
+all_mass <- as.data.frame(all_mass)
+names(all_mass) <- c("Birds", "Birds CR/EX", "Mammals", "Mammals CR/EX")
 
 p4<-Plot_100(birds_bm_100, ylabel = "", xlabel = "Red List Category\nBirds", leg_pos = "none", y_limits = ylim(0,0.5), plottag = "D")
 
 
-pdf(file = "../Output/Body_Mass_figure.pdf", width = 12, height=8)
+cairo_pdf(file = "../Output/Body_Mass_figure_140323.pdf", width = 12, height=8)
 grid.arrange(grobs = list(p1,p2,p3,p4), widths = c(2,2), layout_matrix = rbind(c(1,2), c(3,4)))
 
 dev.off()
 
 ####################
+
+### HABITAT ###
+
+##################
+
+source("Model_to_CR.R")
+###########
+
+#source("Habitat_data_collection.R")
+All_Habitat <- read.csv("../Data/Habitat_Data.csv")
+source("Habitat_data.R")
+
+Habitat_data <- Process_habitat_data(All_Habitat)
+
+Habitat_assess <- merge(Corrected_cats, Habitat_data, by.x = "scientific_name", by.y = "Species")
+
+Habitat_general <- Habitat_assess[which(Habitat_assess$type == "Generalist"),]
+Habitat_special <- Habitat_assess[which(Habitat_assess$type == "Specialist"),]
+
+## Run the bootstrapped models for mammals
+General_boot <- Run_bootmarkov(Historic_assess = Habitat_general, Q)
+Special_boot <- Run_bootmarkov(Historic_assess = Habitat_special, Q)
+
+#write.csv(General_boot, file = "../Data/ganeralhabitatboot.csv", row.names = FALSE)
+#write.csv(Special_boot, file = "../Data/specialhabitatboot.csv", row.names = FALSE)
+General_boot <- read.csv("../Data/ganeralhabitatboot.csv")
+Special_boot <- read.csv("../Data/specialhabitatboot.csv")
+
+#significance values
+p_values_habitat <- c()
+for (i in 1:(length(cats)-1)){
+  p_values_habitat[i]<-t.test(General_boot[which(General_boot$Time == 100), cats[i]], 
+                      Special_boot[which(Special_boot$Time == 100), cats[i]])[[3]]
+}
+p_values_habitat <- p.adjust(p_values_habitat, method = "bonferroni")
+
+# extract values at 100 years
+General_100 <- Boot_100(General_boot)
+Special_100 <- Boot_100(Special_boot)
+
+#rename columns for merge
+General_100[,4] <- "Generalist"
+Special_100[,4] <- "Specialist"
+# merge the dataframes
+Habitat_100 <- rbind(General_100, Special_100)
+names(Habitat_100) <- c("Source", "Threat_level", "Probability", "Type")
+#birds_bm_100 <- birds_bm_100[which(birds_bm_100$Source == "Mean"),]
+
+Plot_habitat_100(Habitat_100)
+
+### not in final paper
+
+# Run for CR and EX
+General_boot2 <- Bootstrapped_probs_CRandEX(Habitat_general, Q)
+Special_boot2 <- Bootstrapped_probs_CRandEX(Habitat_special, Q)
+
+# Extract values
+General_1002 <- Boot_100(General_boot2)
+Special_1002 <- Boot_100(Special_boot2)
+# add column
+General_1002[,4] <- "Generalist"
+Special_1002[,4] <- "Specialist"
+
+Habitat_1002 <- rbind(General_1002, Special_1002)
+names(Habitat_1002) <- c("Source", "Threat_level", "Probability", "Type")
+
+Plot_habitat_100(Habitat_1002, y_limits = ylim(0,0.5), ylabel = "P(EX or CR) at t=100")
+
+################################
+
+### Bird RLI analysis and comparisons ###
+source("RLI2.R")
+
+Bird_RLI <- read.csv("../Data/Bird_RLI_original.csv", header = T, stringsAsFactors = T)
+Bird_RLI <- Format_BirdRLI(Bird_RLI)
+Bird_RLI <- Bird_RLI[,c(5,2,3,4,6,7)]
+
+
+Boot_BirdRLI <- Run_bootmarkov(Bird_RLI, Q)
+
+#write.csv(Boot_BirdRLI, "../Data/Boot_BirdRLI_Full_no1988.csv", row.names = F)
+
+Bird_RLI <- read.csv("../Data/Bird_RLI_original.csv", header = T, stringsAsFactors = T)
+
+Bird_RLI <- Format_BirdRLI_PEX(Bird_RLI)
+Bird_RLI <- Bird_RLI[,c(5,2,3,4,6,7)]
+
+Boot_BirdRLI <- Run_bootmarkov(Bird_RLI, Q)
+
+#### Just birds to compare
+
+# viable species
+Final_Species_List <- unique(Corrected_cats$scientific_name)
+# List all birds
+iucnbirds <- Species_Data[which(Species_Data$class_name == "AVES"),"scientific_name"]
+# Generate a list of all viable birds
+viable_birds <- iucnbirds[which(iucnbirds %in% Final_Species_List)]
+Bird_assessments <- Corrected_cats[which(Corrected_cats$scientific_name %in% viable_birds),]
+
+Boot_birds <- Run_bootmarkov(Bird_assessments, Q)
+
+#write.csv(Boot_birds, "../Data/Boot_Bird_Full.csv", row.names = F)
+
+source("Data_processing_noT7.R")
+# grab all birds
+iucnbirds <- Species_Data[which(Species_Data$class_name == "AVES"),"scientific_name"]
+Final_Species_List <- unique(Species_History$scientific_name)
+# Generate a list of all viable birds
+viable_birds <- iucnbirds[which(iucnbirds %in% Final_Species_List)]
+Bird_assessments <- Species_History[which(Species_History$scientific_name %in% viable_birds),]
+
+Boot_birds_notcorrected <- Run_bootmarkov(Bird_assessments, Q)
+
+wT7 <- Boot_birds %>% Boot_100() %>% add_column(Data = "With T7")
+woT7 <- Boot_birds_notcorrected %>% Boot_100() %>% add_column(Data = "Without T7")
+RLICR <- Boot_BirdRLI %>% Boot_100() %>% add_column(Data = "RLI CR(PEX) as CR")
+RLIEX <- Boot_BirdRLI_EX %>% Boot_100() %>% add_column(Data = "RLI CR(PEX) as EX")
+
+Birds100 <- rbind(wT7, woT7, RLICR, RLIEX)
+Birds100$Data <- factor(Birds100$Data, levels = c("With T7", "Without T7", "RLI CR(PEX) as CR", "RLI CR(PEX) as EX"))
+
+Birds100$Threat_level <- recode(Birds100$Threat_level, "1" = "LC", "2" = "NT", "3" = "VU", "4" = "EN", "5" = "CR")
+
+Plot_100_birds <- function(hundred_year){
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = Data)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple", "goldenrod"), name = "Body Mass")
+  p <- p + geom_bar(stat = "identity", position = "dodge") #+ scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
+  p <- p + labs(y = "Probability of Ex or CR at t=100", x = "IUCN Species Threat Assessment")
+  p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
+  p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+                 axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16), legend.position = c(0.2,0.8), legend.text = element_text(size=12), legend.title = element_text(size=14), strip.text = element_text(size=14))
+  return(p)
+}
+
+Plot_100_birds(Birds100)
 
 
 
@@ -472,11 +652,6 @@ Plot_100 <- function(hundred_year){
 }
 
 Plot_100(birds_bm_100)
-
-
-
-
-
 
 
 

@@ -1,6 +1,7 @@
 require(ggplot2)
 require(gdata)
 require(gridExtra)
+require(cowplot)
 
 Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", header = T, stringsAsFactors = F)
 #Species_Data <- read.csv("../Data/Species_Data.csv", stringsAsFactors = F)
@@ -80,16 +81,18 @@ Assign_taxa <- function(Species_History, Taxa_index){
 plot_taxa <- function (threat_level, xaxis = "Taxonomic Group", xlabels = element_text(size=16, angle = 90,  hjust = 0.8, vjust = 0.5), yaxis = "Comparative Extinction Risk", ylabels = element_text(size=16)){
   i <- threat_level
   cats <- c("LC","NT","VU", "EN","CR")
+  catcols <- c("lightblue", "darkcyan", "goldenrod1", "darkorange", "darkred")
+  fillcolour <-catcols[i]
   categories <- c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered")
   p <- ggplot(data = subset(Taxa_comp, Source %in% c("Median") & Threat_level %in% cats[i]), aes(x = source, y = Probability))
-  p <- p + geom_bar(stat = "identity", position = "dodge", fill = "grey") + #scale_x_discrete(labels=c("Mammal", "Reptile", "Fish", "Invertebrate", "Amphibian", "Plant", "Bird")) +
-    labs(x = xaxis, tag = categories[i], y = yaxis) + ylim(-4,3)
+  p <- p + geom_bar(stat = "identity", position = "dodge", fill = fillcolour) + #scale_x_discrete(labels=c("Mammal", "Reptile", "Fish", "Invertebrate", "Amphibian", "Plant", "Bird")) +
+    labs(x = xaxis, tag = "", y = yaxis) + ylim(-4,3)
   #+  scale_fill_manual(values = c("lightblue", "darkcyan", "orange", "darkorange", "orangered3", "darkred"))
   p <- p + geom_errorbar(aes(ymin= Taxa_comp$Probability[Taxa_comp$Source == "Bottom" & Taxa_comp$Threat_level == cats[i]], ymax=Taxa_comp$Probability[Taxa_comp$Source == "Top" & Taxa_comp$Threat_level == cats[i]]), width=.2, position=position_dodge(.9)) 
   p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
                  axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
                  axis.text.y = ylabels, axis.title = element_text(size=16), axis.text.x = xlabels, axis.ticks.x = element_blank(),
-                 legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "top", plot.tag = element_text(size = 14))+
+                 legend.title = element_text(size=24), legend.text = element_text(size=20), strip.text = element_text(size=14), plot.tag.position = "top", plot.tag = element_text(size = 14))+
     geom_hline(yintercept = 0)
   p
   return(p)
