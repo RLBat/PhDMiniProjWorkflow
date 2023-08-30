@@ -27,6 +27,7 @@ Overall_probs <- Overall_probs %>% slice(match(Categories, category))
 # names(Overall_PEX)[6] <- "EX"
 
 Overall_probs$RLI_weighting <- c(0,1,2,3,4,5)
+Overall_probs$CritE_weighting <- c(0.0001, 0.01, 0.1, 0.667, 0.999, 1)
 
 ###### FUNCTIONS ######
 
@@ -47,12 +48,15 @@ Calc_weightings <- function(RLI_data){
   # force numeric
   RLI_data$Bates_pex <- as.numeric(RLI_data$Bates_pex) 
   RLI_data$RLI_weighting <- as.numeric(RLI_data$RLI_weighting)
+  RLI_data$CritE_weighting <- as.numeric(RLI_data$CritE_weighting)
   # Calculate Index values for each year
   PEX <- RLI_data %>% group_by(year) %>% summarise((Max_value - sum(Bates_pex))/Max_value)
   RLI <- RLI_data %>% group_by(year) %>% summarise((Max_value_RLI - sum(RLI_weighting))/Max_value_RLI)
+  CritE <- RLI_data %>% group_by(year) %>% summarise((Max_value -sum(CritE_weighting))/Max_value)
   names(PEX) <- c("year", "category")
   names(RLI) <- c("year", "category")
-  RLI_values <- bind_rows("Bates" = PEX, "RLI" = RLI, .id = "id")
+  names(CritE) <- c("year", "category")
+  RLI_values <- bind_rows("Bates" = PEX, "RLI" = RLI, "CritE" = CritE, .id = "id")
   return(RLI_values)
 }
 
@@ -182,6 +186,18 @@ ggplot(data = All_RLI[which(All_RLI$id=="RLI"),], aes(x = year, y = category)) +
   geom_point(aes(shape=clade, colour = clade)) +geom_line(aes(colour = clade)) +
   ylim(0,1) + labs(colour = "RLI", shape = "RLI")
 
-ggplot(data = All_RLI[which(All_RLI$id=="RLI"),], aes(x = year, y = category)) + 
-  geom_point(aes(shape=clade, colour = clade)) +geom_line(aes(colour = clade)) +
-  ylim(0,1) + labs(colour = "RLI", shape = "RLI")
+ggplot(data = All_RLI, aes(x = year, y = category, group = interaction(id, clade))) + 
+  geom_point(aes(shape=clade, colour = id), size = 2) + geom_line(aes(colour = id), linewidth = 1) +
+  ylim(0.5,1) + labs(colour = "RLI", shape = "RLI") + labs(y = "Index Value/\nSurvival Probability (t=100)", x = "Year") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), 
+        axis.line.x = element_line(colour = "black"), axis.text.y = element_text(size=16), 
+        axis.title = element_text(size=20), axis.text.x = element_text(size=16), 
+        legend.position = "right", legend.text = element_text(size=12), 
+        legend.title = element_text(size=14), strip.text = element_text(size=14))
+
+###################
+
+### Collect Slope values for all clade/id combos ###
+
+RLI_slope <- All_RLI %>% group_by(clade, id) %>% summarise(Gradient <- lm(category ~ year)[[1]][2])

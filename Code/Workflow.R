@@ -678,3 +678,28 @@ birds_bm_100$Threat_level <-factor(birds_bm_100$Threat_level, levels = cats)
 Plot_100(birds_bm_100)
 
 
+#####################
+
+# Extinction risk comparison plot
+
+CritE <- c(0.0001, 0.01, 0.1, 0.667, 0.999)
+RedList <- c(0,0.2,0.4,0.6,0.8)
+
+Overall_probs <- read.csv("../Data/Overallbootoutput.csv", stringsAsFactors = T)
+Overall_probs <- Overall_probs[Overall_probs$Time==100,c("Threat_level", "Mean")]
+Overall_probs <- Overall_probs %>% mutate(Threat_level = factor(Threat_level, levels = cats)) %>% arrange((Threat_level))
+Bates <- Overall_probs
+RedList_Probs <- data.frame(Bates, CritE, RedList)
+names(RedList_Probs) <- c("Category", "Bates", "Criterion E", "Red List Index")
+
+RedList_Probs <- pivot_longer(RedList_Probs, cols = c("Bates", "Criterion E", "Red List Index"), 
+                              names_to = "Method", values_to = "Probability")
+
+ggplot(RedList_Probs, aes(x=Category, y=Probability, group = Method)) +
+  geom_line(aes(colour = Method), linewidth = 2) + scale_color_manual(values = c("red", "orange", "darkblue")) +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), 
+        axis.line.x = element_line(colour = "black"), axis.text.y = element_text(size=16), 
+        axis.title = element_text(size=20), axis.text.x = element_text(size=16), 
+        legend.position = c(0.3,0.8), legend.text = element_text(size=12), 
+        legend.title = element_text(size=14), strip.text = element_text(size=14))
