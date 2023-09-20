@@ -102,12 +102,12 @@ Run_bootmarkov <- function(Historic_assess, Q, years = 1:100, state = "EX"){
 Boot_100 <- function(Boot_Probs){
   cats <- c("LC","NT","VU", "EN","CR", "EX")
   
-  Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
+  Boot_median <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, median)
   Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
   Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
   
-  hundred_year <- rbind(Boot_means[100,2:6], Boot_bottom[100,2:6], Boot_top[100,2:6])
-  hundred_year["Source"] <- c("Mean", "Bottom", "Top")
+  hundred_year <- rbind(Boot_median[100,2:6], Boot_bottom[100,2:6], Boot_top[100,2:6])
+  hundred_year["Source"] <- c("Median", "Bottom", "Top")
   hundred_year <- as.data.frame(hundred_year)
   hundred_year <- gather(hundred_year, key = "Threat_level", value = "Probability", 1:5)
   hundred_year$Threat_level <- recode(hundred_year$Threat_level, "LC" = 1, "NT" = 2, "VU" = 3, "EN" = 4, "CR" = 5)

@@ -5,7 +5,7 @@
 #### Read in files ######
 
 # Read in the table 7 data from 07-19
-Table7 <- read.csv("../Data/Table7.csv", header=TRUE, stringsAsFactors = FALSE)
+#Table7 <- read.csv("../Data/Table7.csv", header=TRUE, stringsAsFactors = FALSE)
 
 set.seed(333)
 setwd("Documents/PhDMiniProjWorkflow/Code/")
@@ -28,7 +28,7 @@ setwd("Documents/PhDMiniProjWorkflow/Code/")
 ### OR SKIP AND USE THE FOLLOWING ##
 
 #Species_History <- read.csv("../Data/Species_History_IDs_20223.csv", stringsAsFactors = T)
-Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
+#Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
 
 #########################
 
@@ -58,6 +58,9 @@ Species_History_Tags <- Generate_tags(Species_History, Cat_probs)
 Corrected_cats <- Final_clean(Species_History_Tags)
 
 # Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_June222022.csv", stringsAsFactors = T)
+# write.csv(Corrected_cats, "../Data/Corrected_SpeciesHistory_Aug2023.csv", row.names = FALSE)
+# Corrected_cats <- read.csv("../Data/Corrected_SpeciesHistory_Aug2023.csv", stringsAsFactors = T)
+
 
 #######################
 
@@ -74,13 +77,13 @@ Boot_Probs <- Run_bootmarkov(Historic_assess = Corrected_cats, Q)
 ######### PLOTTING ##########
 
 cats <- c("LC","NT","VU", "EN","CR", "EX")
-Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
+Boot_median <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, median)
 Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
 Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
 
 # Bind them together into one df for graphing
-Boot_output <- bind_rows(Boot_means, Boot_bottom, Boot_top, .id = "Type")
-Boot_output$Type[Boot_output$Type == 1] <- "Mean"; Boot_output$Type[Boot_output$Type == 2] <- "Bottom"; Boot_output$Type[Boot_output$Type == 3] <- "Top"
+Boot_output <- bind_rows(Boot_median, Boot_bottom, Boot_top, .id = "Type")
+Boot_output$Type[Boot_output$Type == 1] <- "Median"; Boot_output$Type[Boot_output$Type == 2] <- "Bottom"; Boot_output$Type[Boot_output$Type == 3] <- "Top"
 Boot_output <- Boot_output[,1:7]
 # Convert to long format
 Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
@@ -88,11 +91,11 @@ Boot_output <- spread(Boot_output, key = "Type", value = "Probability")
 
 Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels = c("CR", "EN", "VU", "NT", "LC"))
 
-#write.csv(Boot_output, "../Data/Overallbootoutput.csv", row.names = FALSE)
+# write.csv(Boot_output, "../Data/Overallbootoutput_Aug23.csv", row.names = FALSE)
 # Boot_output <- read.csv("../Data/Overallbootoutput.csv")
 ######### Graphing ##############
 
-p <- ggplot(data = Boot_output, aes(x = Time, y = Mean, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "darkorange", "gold", "darkcyan", "lightblue"))
+p <- ggplot(data = Boot_output, aes(x = Time, y = Median, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "darkorange", "gold", "darkcyan", "lightblue"))
 p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,1,0.1), minor_breaks = seq(0,1,0.01))
 p <- p + geom_ribbon(aes(ymin=Bottom, ymax=Top, alpha=0.5),fill="lightgrey", linetype = 2, show.legend = FALSE)
 p <- p + labs(y = "Probability of extinction", x= "Time (years)", colour = "Red List Cateogry") 
@@ -586,7 +589,7 @@ Birds100$Data <- factor(Birds100$Data, levels = c("With T7", "Without T7", "RLI 
 Birds100$Threat_level <- recode(Birds100$Threat_level, "1" = "LC", "2" = "NT", "3" = "VU", "4" = "EN", "5" = "CR")
 
 Plot_100_birds <- function(hundred_year){
-  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = Data)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple", "goldenrod"), name = "Body Mass")
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Median")), aes(x = Threat_level, y = Probability, fill = Data)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple", "goldenrod"), name = "Body Mass")
   p <- p + geom_bar(stat = "identity", position = "dodge") #+ scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
   p <- p + labs(y = "Probability of Ex or CR at t=100", x = "IUCN Species Threat Assessment")
   p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
@@ -610,13 +613,13 @@ heavy_probs <- Bootstrapped_probs_CRandEX(birds_heavy, Q)
 
 #cats <- c("LC","NT","VU", "EN","CR", "EX")
 placeholder <- function(Boot_Probs){
-  Boot_means <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, mean)
+  Boot_median <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, median)
   Boot_top <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.975)))
   Boot_bottom <- Boot_Probs %>% group_by(Time) %>% summarise_at(cats, ~quantile(.x, c(.025)))
   
   # Bind them together into one df for graphing
-  Boot_output <- bind_rows(Boot_means, Boot_bottom, Boot_top, .id = "Type")
-  Boot_output$Type[Boot_output$Type == 1] <- "Mean"; Boot_output$Type[Boot_output$Type == 2] <- "Bottom"; Boot_output$Type[Boot_output$Type == 3] <- "Top"
+  Boot_output <- bind_rows(Boot_median, Boot_bottom, Boot_top, .id = "Type")
+  Boot_output$Type[Boot_output$Type == 1] <- "Median"; Boot_output$Type[Boot_output$Type == 2] <- "Bottom"; Boot_output$Type[Boot_output$Type == 3] <- "Top"
   Boot_output <- Boot_output[,1:7]
   # Convert to long format
   Boot_output <- gather(Boot_output, key = "Threat_level", value = "Probability", LC:CR)
@@ -642,7 +645,7 @@ birds_bm_100 <- birds_bm_100 %>% mutate(V4 = fct_relevel(V4, "Light", "Heavy"))
 birds_bm_100$Threat_level <-factor(birds_bm_100$Threat_level, levels = cats) 
 
 Plot_100 <- function(hundred_year){
-  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple"), name = "Body Mass")
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Median")), aes(x = Threat_level, y = Probability, fill = V4)) + scale_fill_manual(values = c("cyan3", "tomato3", "purple"), name = "Body Mass")
   p <- p + geom_bar(stat = "identity", position = "dodge") #+ scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR"))
   p <- p + labs(y = "Probability of Ex or CR at t=100", x = "IUCN Species Threat Assessment")
   p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
@@ -686,7 +689,7 @@ CritE <- c(0.0001, 0.01, 0.1, 0.667, 0.999)
 RedList <- c(0,0.2,0.4,0.6,0.8)
 
 Overall_probs <- read.csv("../Data/Overallbootoutput.csv", stringsAsFactors = T)
-Overall_probs <- Overall_probs[Overall_probs$Time==100,c("Threat_level", "Mean")]
+Overall_probs <- Overall_probs[Overall_probs$Time==100,c("Threat_level", "Median")]
 Overall_probs <- Overall_probs %>% mutate(Threat_level = factor(Threat_level, levels = cats)) %>% arrange((Threat_level))
 Bates <- Overall_probs
 RedList_Probs <- data.frame(Bates, CritE, RedList)
