@@ -7,6 +7,7 @@ require(tidyverse)
 
 Species_History <- read.csv("../Data/Species_History_IDs_20223.csv", stringsAsFactors = T)
 Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
+Table7 <- read.csv("../Data/Table7.csv", header=TRUE, stringsAsFactors = FALSE)
 
 ###############################
 
@@ -19,11 +20,11 @@ Assess_Clean <- function(Species_History){
   # Remove all pre 1994 listings as that is when the current system was implemented
   Species_History <- subset(Species_History, Species_History$year >= 1994)
   # Select which codes to remove    
-  lose_codes <- c("I","NR","K", "R", "CT", "E", "V", "Ex/E")
+  lose_codes <- c("I","NR","K", "R", "CT", "E", "V", "Ex/E", "Ex?", "nt")
   # Remove those codes
   Species_History <- dplyr::filter(Species_History, !Species_History$category %in% lose_codes)
   # Now rename codes where they have several names
-  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "Ex?" = "EX", "EW" = "EX", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT", "nt" = "NT")
+  Species_History$category <- recode(Species_History$category, "Ex" = "EX", "EW" = "EX", "LR/lc" = "LC", "LR/nt" = "NT", "LR/cd" = "NT")
   # Generate a df of only the years with two assessments
   Duplicates <- Species_History %>% group_by(taxonid) %>% filter(duplicated(year)|duplicated(year, fromLast=TRUE))
   # Remove these assessments as there is no way to know which order they were in
@@ -48,7 +49,7 @@ Add_table7_tags <- function(Table7, Species_History){
   Table7$scientific_name <- as.character(Table7$scientific_name)
   # Make a df of all assessment changes contained in Table 7
   ## This removes all species that have changed name
-  Cat_Changes <- inner_join(Species_History, Table7[,c(1,3:6)], by = c("scientific_name", "year"))
+  Cat_Changes <- inner_join(Species_History, Table7[,c(1,3:6)], by = c("scientific_name", "year"), relationship = "many-to-many")
   # Cooerce to character
   Cat_Changes$category <- as.character(Cat_Changes$category)
   Cat_Changes$new_category <- as.character(Cat_Changes$new_category)
