@@ -116,7 +116,10 @@ Species_Meta_Collect <- function(API_key=API_key, Species_IDs = Species_Data$tax
   # Run for the rest of the species.
   for (i in start_ID:length(Species_IDs)){
     # Fetches the next species info and adds it to the master df
-    Species_Meta[nrow(Species_Meta)+1,] <- as.data.frame(rl_search(id=Species_IDs[i], key=API_key)[[2]])
+    species_iter <- rl_search(id=Species_IDs[i], key=API_key)[[2]]
+    if (class(species_iter)=="data.frame"){
+      Species_Meta[nrow(Species_Meta)+1,] <- as.data.frame(rl_search(id=Species_IDs[i], key=API_key)[[2]])
+    }
     if (i %% 50 == 0){
       # Saves the master list every 1000 species checked as it takes a while to run
       write.csv(Species_Meta, "../Data/Species_Meta.csv")

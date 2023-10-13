@@ -21,8 +21,8 @@ Process_habitat_data <- function(All_Habitat){
 }
 
 
-Plot_habitat_100 <- function(hundred_year, ylabel = "P(EX) at t=100", xlabel = "Red List Category", leg_pos = c(0.2,0.8), y_limits = ylim(0,0.2), plottag = ""){
-  p <- ggplot(data = subset(hundred_year, Source %in% c("Mean")), aes(x = Threat_level, y = Probability, fill = Type)) + scale_fill_manual(values = c("darkcyan", "darkorange", "darkred"), name = "")
+Plot_habitat_100 <- function(hundred_year, ylabel = "Probability of extinction at 100 years\n", xlabel = "\nIUCN Red List Category", leg_pos = c(0.2,0.8), y_limits = ylim(0,0.2), plottag = ""){
+  p <- ggplot(data = subset(hundred_year, Source %in% c("Median")), aes(x = Threat_level, y = Probability, fill = Type)) + scale_fill_manual(values = c("darkcyan", "darkorange", "darkred"), name = "")
   p <- p + geom_bar(stat = "identity", position = "dodge") + scale_x_discrete(breaks = 1:5, labels=c("LC","NT","VU", "EN","CR")) + y_limits
   p <- p + labs(y = ylabel, x = xlabel, tag = plottag)
   p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 

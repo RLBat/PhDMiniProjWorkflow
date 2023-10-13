@@ -92,7 +92,7 @@ Boot_output <- spread(Boot_output, key = "Type", value = "Probability")
 Boot_output$Threat_level <- factor(Boot_output$Threat_level, levels = c("CR", "EN", "VU", "NT", "LC"))
 
 # write.csv(Boot_output, "../Data/Overallbootoutput_Aug23.csv", row.names = FALSE)
-# Boot_output <- read.csv("../Data/Overallbootoutput.csv")
+#Boot_output <- read.csv("../Data/Overallbootoutput.csv")
 ######### Graphing ##############
 
 p <- ggplot(data = Boot_output, aes(x = Time, y = Median, colour = Threat_level, xmax = 100)) + scale_color_manual(values = c("darkred", "darkorange", "gold", "darkcyan", "lightblue"))
@@ -488,8 +488,8 @@ Habitat_special <- Habitat_assess[which(Habitat_assess$type == "Specialist"),]
 General_boot <- Run_bootmarkov(Historic_assess = Habitat_general, Q)
 Special_boot <- Run_bootmarkov(Historic_assess = Habitat_special, Q)
 
-#write.csv(General_boot, file = "../Data/ganeralhabitatboot.csv", row.names = FALSE)
-#write.csv(Special_boot, file = "../Data/specialhabitatboot.csv", row.names = FALSE)
+#write.csv(General_boot, file = "../Data/ganeralhabitatboot0923.csv", row.names = FALSE)
+#write.csv(Special_boot, file = "../Data/specialhabitatboot0923.csv", row.names = FALSE)
 General_boot <- read.csv("../Data/ganeralhabitatboot.csv")
 Special_boot <- read.csv("../Data/specialhabitatboot.csv")
 
@@ -549,10 +549,10 @@ Boot_BirdRLI <- Run_bootmarkov(Bird_RLI, Q)
 
 Bird_RLI <- read.csv("../Data/Bird_RLI_original.csv", header = T, stringsAsFactors = T)
 
-Bird_RLI <- Format_BirdRLI_PEX(Bird_RLI)
-Bird_RLI <- Bird_RLI[,c(5,2,3,4,6,7)]
+Bird_RLI_EX <- Format_BirdRLI_PEX(Bird_RLI)
+Bird_RLI_EX <- Bird_RLI_EX[,c(5,2,3,4,6,7)]
 
-Boot_BirdRLI <- Run_bootmarkov(Bird_RLI, Q)
+Boot_BirdRLI_EX <- Run_bootmarkov(Bird_RLI, Q)
 
 #### Just birds to compare
 
@@ -566,7 +566,7 @@ Bird_assessments <- Corrected_cats[which(Corrected_cats$scientific_name %in% via
 
 Boot_birds <- Run_bootmarkov(Bird_assessments, Q)
 
-#write.csv(Boot_birds, "../Data/Boot_Bird_Full.csv", row.names = F)
+# write.csv(Boot_birds, "../Data/Boot_Bird_Full_Sep23.csv", row.names = F)
 
 source("Data_processing_noT7.R")
 # grab all birds
@@ -706,3 +706,22 @@ ggplot(RedList_Probs, aes(x=Category, y=Probability, group = Method)) +
         axis.title = element_text(size=20), axis.text.x = element_text(size=16), 
         legend.position = c(0.3,0.8), legend.text = element_text(size=12), 
         legend.title = element_text(size=14), strip.text = element_text(size=14))
+
+
+
+#######################
+
+# SANDBOX #
+
+
+Meta <- read.csv("../Data/Species_Meta.csv", stringsAsFactors = F)
+plant_meta <- Meta[which(Meta$kingdom == "PLANTAE"),]
+plant_meta <- plant_meta[which(is.na(plant_meta$criteria)==FALSE),]
+
+newest <- Corrected_cats[match(unique(Corrected_cats$taxonid), Corrected_cats$taxonid),]
+
+
+
+
+
+
