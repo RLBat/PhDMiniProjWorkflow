@@ -98,8 +98,49 @@ predict27_diff <- predict27
 predict27_diff[,1:6] = apply(predict27_diff[,1:6], 2, function(x) as.numeric(x))
 predict27_diff[,1:6] <- t(apply(predict27_diff[,1:6], 1, function(x) x-props))
 
-#standard_73 <- predict_movements(scenarios = list(Standard_tt), time = 73)
+# generate the fire
+scenario_27 <- transitions_ot(scenarios, time=27)
 
-standard_73 <- Standard_tt %^% 73
+iter=0
+
+for (i in scenario_27){
+  iter=iter+1
+  for (j in 1:73){
+    i <- i %*% Standard_tt
+  }
+  scenario_27[[iter]] <- i
+}
+
+predictions_100 <- predict_movements(scenarios = scenario_27, time = 1)
+predictions_100$scenario <- scenario_names
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
