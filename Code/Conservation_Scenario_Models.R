@@ -90,13 +90,34 @@ predict27$scenario <- scenario_names
 
 # grab the original values
 props = c(LC = 18302, NT = 1966, VU = 2473, EN = 2429, CR = 1564, EX = 89)
-props <- append(props, c(sum(props), "t0"))
+props <- as.numeric(props)
 
 predict27_diff <- predict27
 
 #grab the difference between the starting values and after 27 years
 predict27_diff[,1:6] = apply(predict27_diff[,1:6], 2, function(x) as.numeric(x))
 predict27_diff[,1:6] <- t(apply(predict27_diff[,1:6], 1, function(x) x-props))
+
+## plot those differences after 27 years
+
+#remove total row
+predict27_diff <- predict27_diff[,c(1:6,8)]
+predict27_diff <- gather(predict27_diff, "category", "PEX", -scenario)
+predict27_diff$category <- factor(predict27_diff$category, levels = c("LC", "NT", "VU", "EN", "CR", "EX"))
+
+ggplot(data=predict27_diff, aes(x = category, y = PEX, fill = scenario)) +
+  geom_bar(stat = "identity", position = "dodge")
+
+ggplot(data=predict27_diff, aes(x = scenario, y = PEX, fill = category)) +
+  geom_bar(stat = "identity", position = "dodge") + 
+  geom_abline(intercept = 0) +
+  scale_fill_manual(values = c("lightblue", "darkcyan", "goldenrod1", "darkorange", "darkred", "black"), name = "") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
+        axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16) , axis.title = element_text(size=16), axis.text.x = element_text(size=16, angle = 90,  hjust = 0.8, vjust = 0.5), axis.ticks.x = element_blank(),
+        legend.title = element_text(size=24), legend.text = element_text(size=20), strip.text = element_text(size=14), plot.tag.position = "top", plot.tag = element_text(size = 14))
+
+##############################################
 
 # generate the fire
 scenario_27 <- transitions_ot(scenarios, time=27)
@@ -114,19 +135,54 @@ for (i in scenario_27){
 predictions_100 <- predict_movements(scenarios = scenario_27, time = 1)
 predictions_100$scenario <- scenario_names
 
+# differences from t=0
+predict100_diff <- predictions_100
+predict100_diff[,1:6] <- apply(predict100_diff[,1:6], 2, function(x) as.numeric(x))
+predict100_diff[,1:6] <- t(apply(predict100_diff[,1:6], 1, function(x) x-props))
+
+predict100_diff <- predict100_diff[,c(1:6,8)]
+predict100_diff <- gather(predict100_diff, "category", "PEX", -scenario)
+predict100_diff$category <- factor(predict100_diff$category, levels = c("LC", "NT", "VU", "EN", "CR", "EX"))
 
 
+# plot it
+ggplot(data=predict100_diff, aes(x = scenario, y = PEX, fill = category)) +
+  geom_bar(stat = "identity", position = "dodge") + 
+  geom_hline(yintercept = 0) +
+  labs(y = "Difference of number of species in category", x = "Conservation Scenario") +
+  scale_fill_manual(values = c("lightblue", "darkcyan", "goldenrod1", "darkorange", "darkred", "black"), name = "") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
+        axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16) , axis.title = element_text(size=16), axis.text.x = element_text(size=16, angle = 90,  hjust = 0.8, vjust = 0.5), axis.ticks.x = element_blank(),
+        legend.title = element_text(size=24), legend.text = element_text(size=20), strip.text = element_text(size=14), plot.tag.position = "top", plot.tag = element_text(size = 14))
+
+###########
+
+## plotting changes over time
 
 
+###########
 
+## changes if we uplist every threatened species by 2050
 
+# 27 year species category movements
+props27 <- as.numeric(c(LC=18302, NT = 4439, VU= 2429, EN = 1564, CR = 0, EX = 89))
 
+# grab 73 year movements
+standard_73tt <- as.matrix(Standard_tt %^% 73)
 
+# apply to each other to get species per category after 73 years
+predict_uplist <- predict_movements(props = props27, scenarios = list(standard_73tt), time = 1)
 
+predict_uplist[,1:6] <- apply(predict_uplist[,1:6],2,function(x) as.numeric(x))
+predict_uplist[,1:6] <- t(apply(predict_uplist[,1:6], 1, function(x) x-props))
 
+#############
 
+BAU <- Standard_tt %^% 100
 
-
+# Overall species extinction risk
+sum(BAU[1:5,6] * props[1:5]/sum(props[1:5]))
 
 
 
