@@ -74,6 +74,7 @@ Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "
 ### Run the bootstrapped model
 Boot_Probs <- Run_bootmarkov(Historic_assess = Corrected_cats, Q)
 
+#Boot_Probs <- read.csv("../Data/BootProbs_EWasCR.csv", header = T, stringsAsFactors = T)
 ######### PLOTTING ##########
 
 cats <- c("LC","NT","VU", "EN","CR", "EX")
@@ -459,7 +460,7 @@ names(all_mass) <- c("Birds", "Birds CR/EX", "Mammals", "Mammals CR/EX")
 p4<-Plot_100(birds_bm_100, ylabel = "", xlabel = "Red List Category\nBirds", leg_pos = "none", y_limits = ylim(0,0.5), plottag = "D")
 
 
-cairo_pdf(file = "../Output/Body_Mass_figure_140323.pdf", width = 12, height=8)
+cairo_pdf(file = "../Output/Body_Mass_figure_240124.pdf", width = 12, height=8)
 grid.arrange(grobs = list(p1,p2,p3,p4), widths = c(2,2), layout_matrix = rbind(c(1,2), c(3,4)))
 
 dev.off()
@@ -545,14 +546,17 @@ Bird_RLI <- Bird_RLI[,c(5,2,3,4,6,7)]
 
 Boot_BirdRLI <- Run_bootmarkov(Bird_RLI, Q)
 
-#write.csv(Boot_BirdRLI, "../Data/Boot_BirdRLI_Full_no1988.csv", row.names = F)
+#write.csv(Boot_BirdRLI, "../Data/Boot_BirdRLI_PEXasEX.csv", row.names = F)
+#Boot_BirdRLI <- read.csv("../Data/Boot_BirdRLI_PEXasCR.csv", header = T, stringsAsFactors = T)
 
 Bird_RLI <- read.csv("../Data/Bird_RLI_original.csv", header = T, stringsAsFactors = T)
 
 Bird_RLI_EX <- Format_BirdRLI_PEX(Bird_RLI)
 Bird_RLI_EX <- Bird_RLI_EX[,c(5,2,3,4,6,7)]
 
-Boot_BirdRLI_EX <- Run_bootmarkov(Bird_RLI, Q)
+Boot_BirdRLI_EX <- Run_bootmarkov(Bird_RLI_EX, Q)
+
+#write.csv(Boot_BirdRLI_EX, "../Data/Boot_BirdRLI_PEXasEX.csv", row.names = F)
 
 #### Just birds to compare
 
@@ -566,7 +570,7 @@ Bird_assessments <- Corrected_cats[which(Corrected_cats$scientific_name %in% via
 
 Boot_birds <- Run_bootmarkov(Bird_assessments, Q)
 
-# write.csv(Boot_birds, "../Data/Boot_Bird_Full_Sep23.csv", row.names = F)
+#write.csv(Boot_birds, "../Data/Boot_Bird_RLsubset_verified.csv", row.names = F)
 
 source("Data_processing_noT7.R")
 # grab all birds
@@ -574,9 +578,11 @@ iucnbirds <- Species_Data[which(Species_Data$class_name == "AVES"),"scientific_n
 Final_Species_List <- unique(Species_History$scientific_name)
 # Generate a list of all viable birds
 viable_birds <- iucnbirds[which(iucnbirds %in% Final_Species_List)]
-Bird_assessments <- Species_History[which(Species_History$scientific_name %in% viable_birds),]
+Bird_assessments_noT7 <- Species_History_noT7[which(Species_History_noT7$scientific_name %in% viable_birds),]
 
-Boot_birds_notcorrected <- Run_bootmarkov(Bird_assessments, Q)
+Boot_birds_notcorrected <- Run_bootmarkov(Bird_assessments_noT7, Q)
+
+#write.csv(Boot_birds_notcorrected, "../Data/Boot_Bird_RLsubset_notverified.csv", row.names = F)
 
 wT7 <- Boot_birds %>% Boot_100() %>% add_column(Data = "With T7")
 woT7 <- Boot_birds_notcorrected %>% Boot_100() %>% add_column(Data = "Without T7")
@@ -600,9 +606,45 @@ Plot_100_birds <- function(hundred_year){
 
 Plot_100_birds(Birds100)
 
+#####
+
+# ANOVA testing
+
+wT7 <- Boot_birds %>% add_column(Data = "With T7")
+woT7 <- Boot_birds_notcorrected %>% add_column(Data = "Without T7")
+RLICR <- Boot_BirdRLI %>% add_column(Data = "RLI CR(PEX) as CR")
+RLIEX <- Boot_BirdRLI_EX %>% add_column(Data = "RLI CR(PEX) as EX")
+Birds_all100 <- rbind(wT7, woT7, RLICR, RLIEX)
+
+Birds_all100 <- Birds_all100[Birds_all100$Time==100,c(3:7,9)]
+
+kruskal.test(LC ~ Data, data=Birds_all100)
+pairwise.wilcox.test()
 
 
+t.test()
 
+read.csv()
+
+### Checking for EW
+
+# read in the EW as CR booted values
+EWasCR <- read.csv("../Data/BootProbs_EWasCR.csv", header = T, stringsAsFactors = T)
+EWasCR <- EWasCR[which(EWasCR$Time==100),]
+EWasEX <- read.csv("../Data/Overall_Probabilities.csv", header = T, stringsAsFactors = T)
+EWasEX <- EWasEX[which(EWasEX$Time==100),]
+EWasEX$Treatment <- "EW_as_EX"
+EWasCR$Treatment <- "EW_as_CR"
+
+EW_testing <- rbind(EWasCR[,c(2:9)], EWasEX[,c(2:9)])
+
+wilcox.test(EWasCR$LC, EWasEX$LC)
+wilcox.test(EWasCR$NT, EWasEX$NT)
+wilcox.test(EWasCR$VU, EWasEX$VU)
+wilcox.test(EWasCR$EN, EWasEX$EN)
+wilcox.test(EWasCR$CR, EWasEX$CR)
+
+#####################################################################
 
 ### sandbox TO CLEAN ####
 
