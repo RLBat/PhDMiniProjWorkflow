@@ -87,7 +87,7 @@ Plot_100 <- function(hundred_year, ylabel = "Probability of extinction at t=100"
   p <- p + geom_errorbar(aes(ymin= hundred_year$Probability[hundred_year$Source == "Bottom"], ymax=hundred_year$Probability[hundred_year$Source == "Top"]), width=.2, position=position_dodge(.9)) 
   p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
                  axis.text.y = element_text(size=16), axis.title = element_text(size=20), axis.text.x = element_text(size=16), legend.position = leg_pos, legend.text = element_text(size=12), 
-                 legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "topright")
+                 legend.title = element_text(size=14), strip.text = element_text(size=14), plot.tag.position = "topleft")
   return(p)
 }
 

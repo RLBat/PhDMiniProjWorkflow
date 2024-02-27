@@ -61,5 +61,5 @@ Assess_clean_basic <- function(Species_History){
   return(Species_History)
 }
 
-Species_History <- Assess_clean_basic(Species_History)
+Species_History_noT7 <- Assess_clean_basic(Species_History)
 

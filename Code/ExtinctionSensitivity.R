@@ -1,7 +1,7 @@
 require(dplyr)
 `%!in%` = Negate(`%in%`)
 
-Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_Dec21.csv", header = T, stringsAsFactors = F)
+Historic_assess <- read.csv("../Data/Corrected_SpeciesHistory_Aug2023.csv", header = T, stringsAsFactors = F)
 
 #table(Historic_assess$category)
 
@@ -35,8 +35,8 @@ Reduce_Extinct_Species <- function(x=0.1, Historic_assess){
 
 ########## RUNNING CODE ############
 
-Historic_assess <- Duplicate_Extinct_Species(x=5, Historic_assess = Historic_assess_clean)
-Historic_assess <- Reduce_Extinct_Species(x=0.9, Historic_assess = Historic_assess_clean)
+Historic_assess_moreEX <- Duplicate_Extinct_Species(x=5, Historic_assess = Historic_assess)
+Historic_assess_fewerEX <- Reduce_Extinct_Species(x=0.9, Historic_assess = Historic_assess)
 
 #######################################
 #test1 <- rbind(Historic_assess, Historic_assess[rep(which(Historic_assess$category == "EX"),3),])

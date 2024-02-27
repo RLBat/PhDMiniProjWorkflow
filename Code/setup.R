@@ -14,3 +14,5 @@ Species_Data <- read.csv("../Data/Species_Data_20222.csv", stringsAsFactors = F)
 Q <- Transition_intensity_matrix(Categories <- c("LC", "NT", "VU", "EN", "CR", "EX"))
 cats <- c("LC","NT","VU", "EN","CR", "EX")
 Boot_output <- read.csv("../Data/Overallbootoutput_Aug23.csv", stringsAsFactors = FALSE, header = T)
+
+
