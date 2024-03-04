@@ -4,6 +4,8 @@ require(dplyr)
 require(doParallel)
 require(tidyverse)
 require(expm)
+require(ggplot2)
+require(gridExtra)
 
 `%!in%` = Negate(`%in%`)
 
@@ -94,6 +96,7 @@ predict27_diff[,1:6] <- t(apply(predict27_diff[,1:6], 1, function(x) x-props))
 
 #remove total row and format for plotting
 predict27_diff <- predict27_diff[,c(1:6,8)]
+predict27_diff_long <- predict27_diff
 predict27_diff <- gather(predict27_diff, "category", "PEX", -scenario)
 predict27_diff$category <- factor(predict27_diff$category, levels = c("LC", "NT", "VU", "EN", "CR", "EX"))
 
@@ -190,7 +193,7 @@ movementsOT <- function(conservation_scenario = Standard_tt, time = 100,
   # names(predOT) <- Categories
   for(i in 1:time){
     scenario = scenario %*% conservation_scenario
-    predOT <- rbind(predOT, calc_movements(scenario = scenario))
+    predOT <- rbind(predOT, calc_movements(scenario = scenario, props = props))
   }
   return(predOT)
 }
@@ -198,18 +201,19 @@ movementsOT <- function(conservation_scenario = Standard_tt, time = 100,
 # formats the output from movementsOT ready for plotting
 format_for_plot <- function(predOT){
   predOT <- rownames_to_column(predOT, "Time")
-  predOT$Time <- as.numeric(predOT$Time)-1
+  predOT <- rbind(c(0,props), predOT)
+  predOT$Time <- as.numeric(predOT$Time)
   predOT<-gather(predOT, key = "ThreatLevel", value = "Value", -Time)
   return(predOT)
 }
 
 # plots the output from format_for_plot
-Plot_TT <- function(transitionTable){
-    standard100<-movementsOT(conservation_scenario = transitionTable)
+Plot_TT <- function(transitionTable, time = 100){
+    standard100<-movementsOT(conservation_scenario = transitionTable, time = time)
     standard100 <- format_for_plot(standard100)
     standard100$ThreatLevel <- factor(standard100$ThreatLevel, levels = c("EX", "CR", "EN", "VU", "NT", "LC"))
     p <- ggplot(data = standard100, aes(x = Time, y = Value, colour = ThreatLevel)) + scale_color_manual(values = c("black","darkred", "darkorange", "gold", "darkcyan", "lightblue"))
-    p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,22000,5000))
+    p <- p + geom_line(size=1.2) + scale_y_continuous(breaks = seq(0,25000,5000))
     #p <- p + geom_ribbon(aes(ymin=0, ymax=Value, alpha=0.5),fill="lightgrey", linetype = 0, show.legend = FALSE)
     p <- p + labs(y = "Species in category", x= "Time (years)", colour = "Red List Cateogry") 
     p <- p + theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
@@ -262,6 +266,7 @@ ConSceAll <- predict_movements(scenarios = list(Standard_tt, DoubleDownAll,
                               HalfUpAll, DoubleDownThreat, HalfUpThreat, 
                               DoubleDownENCR, HalfUpENCR, DoubleDownCR, 
                               HalfUpCR), time = 26)
+ConSceAll<- ConSceAll[,1:6]
 
 ConSceAll$scenario <- c("Business as usual", "Double Downlisting", "Halve Uplisting", 
                      "Double Downlisting (Threatened)", "Halve Uplisting (Threatened)", 
@@ -270,6 +275,83 @@ ConSceAll$scenario <- c("Business as usual", "Double Downlisting", "Halve Uplist
 
 ConSceAll[,1:6] = apply(ConSceAll[,1:6], 2, function(x) as.numeric(x))
 ConSceAll[,1:6] <- t(apply(ConSceAll[,1:6], 1, function(x) x-props))
+
+# add the original 4 scenarios
+predict27_diff_long$scenario <- c("No Extinctions", "Can't become Extinct or threatened", "Can't become threatened", "Only Uplisting", "Standard")
+ConSceAll <- rbind(ConSceAll, predict27_diff_long[c(4,1,3,2),])
+ConSceAll <- ConSceAll[,c(7,1:6)]
+ConSceAll[,c(2:7)] <- round(ConSceAll[,c(2:7)])
+
+# condense down
+ConSceCond <- ConSceAll %>% mutate(NotThreat = LC + NT) %>% mutate(Threat = VU + EN + CR)
+ConSceCond <- ConSceCond[,c(1,8,9,7)]
+
+####
+# Plot Over Time
+
+Prep_for_plot <- function(transitionTable, time = 100){
+  standard100<-movementsOT(conservation_scenario = transitionTable, time = time)
+  standard100<-sweep(standard100, 2, props)
+  standard100 <- format_for_plot(standard100)
+  standard100[which(standard100$Time == 0),"Value"] <- 0
+  standard100$ThreatLevel <- factor(standard100$ThreatLevel, levels = c("EX", "CR", "EN", "VU", "NT", "LC"))
+  return(standard100)
+}
+
+No_EX_OT <- Prep_for_plot(NoEX_tt)
+p1 <-ggplot(data = No_EX_OT, aes(x = Time, y = Value, colour = ThreatLevel)) + scale_color_manual(values = c("black","darkred", "darkorange", "gold", "darkcyan", "lightblue")) +
+  geom_line(size=1.2) + scale_y_continuous(breaks = seq(-5000,5000,100)) + ylim(-1500,3000) +
+  labs(y = "Comparative species in category", x= "", colour = "Red List Cateogry", title = "No Extinctions") + geom_hline(yintercept = 0) + geom_vline(xintercept = 29, linetype="dotted") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16), axis.text.x = element_text(size=0, colour = c(NA, "black")), axis.title = element_text(size=20), 
+        legend.position = "none", legend.text = element_text(size=14), legend.title = element_text(size=16), strip.text = element_text(size=14),
+        plot.title = element_text(size = 18, hjust = 1, vjust = -3))
+
+NoRecoverOT <- Prep_for_plot(NoRecover_tt)
+p2 <-ggplot(data = NoRecoverOT, aes(x = Time, y = Value, colour = ThreatLevel)) + scale_color_manual(values = c("black","darkred", "darkorange", "gold", "darkcyan", "lightblue")) +
+  geom_line(size=1.2) + scale_y_continuous(breaks = seq(-10000,5000,1000)) +
+  labs(y = "", x= "", colour = "Red List Cateogry", title = "No Downlistings") + geom_hline(yintercept = 0) + geom_vline(xintercept = 29, linetype="dotted") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16), axis.text.x = element_text(size=0), axis.title = element_text(size=20), 
+        legend.position = "none", legend.text = element_text(size=14), legend.title = element_text(size=16), strip.text = element_text(size=14),
+        plot.title = element_text(size = 18, hjust = 1, vjust = -3))
+
+
+HalfUpOT <- Prep_for_plot(HalfUpThreat)
+p3 <-ggplot(data = HalfUpOT, aes(x = Time, y = Value, colour = ThreatLevel)) + scale_color_manual(values = c("black","darkred", "darkorange", "gold", "darkcyan", "lightblue")) +
+  geom_line(size=1.2) + scale_y_continuous(breaks = seq(-5000,5000,100)) + ylim(-1500,3000) +
+  labs(y = "Comparative species in category", x= "Time (years)", colour = "Red List Cateogry", title = "Halved Uplistings") + geom_hline(yintercept = 0) + geom_vline(xintercept = 29, linetype="dotted") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16), axis.text.x = element_text(size=16), axis.title = element_text(size=20), 
+        legend.position = "none", legend.text = element_text(size=14), legend.title = element_text(size=16), strip.text = element_text(size=14),
+        plot.title = element_text(size = 18, hjust = 1, vjust = -3))
+
+DoubleDownOT <- Prep_for_plot(DoubleDownThreat)
+p4 <-ggplot(data = DoubleDownOT, aes(x = Time, y = Value, colour = ThreatLevel)) + scale_color_manual(values = c("black","darkred", "darkorange", "gold", "darkcyan", "lightblue")) +
+  geom_line(size=1.2) + scale_y_continuous(breaks = seq(-5000,5000,100)) + ylim(-1500,3000) +
+  labs(y = "", x= "Time (years)", colour = "Red List Cateogry", title = "Doubled Downlistings") + geom_hline(yintercept = 0) + geom_vline(xintercept = 29, linetype="dotted") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16), axis.text.x = element_text(size=16), axis.title = element_text(size=20), 
+        legend.position = "none", legend.text = element_text(size=14), legend.title = element_text(size=16), strip.text = element_text(size=14),
+        plot.title = element_text(size = 18, hjust = 1, vjust = -3))
+
+BAU_OT <- Prep_for_plot(Standard_tt)
+p5 <- ggplot(data = BAU_OT, aes(x = Time, y = Value, colour = ThreatLevel)) + scale_color_manual(values = c("black","darkred", "darkorange", "gold", "darkcyan", "lightblue")) +
+  geom_line(size=1.2) + scale_y_continuous(breaks = seq(-5000,5000,500), minor_breaks = seq(-5000,5000,500)) + ylim(-1500,3000) +
+  labs(y = "", x= "", colour = "Red List Cateogry", title = "Business as Usual") + geom_hline(yintercept = 0) + geom_vline(xintercept = 29, linetype="dotted") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16), axis.text.x = element_text(size=16), axis.title = element_text(size=20), 
+        legend.position = "none", legend.text = element_text(size=14), legend.title = element_text(size=16), strip.text = element_text(size=14),
+        plot.title = element_text(size = 18, hjust = 1, vjust = -3) )
+
+leg <- ggplot(data = BAU_OT, aes(Time, Value, colour = ThreatLevel)) + geom_line() +
+  scale_colour_manual(values = c("lightblue", "darkcyan", "gold", "darkorange", "darkred", "black"), name = "Red List Category", 
+                    labels = c("Least Concern", "Near Threatened", "Vulnerable", "Endangered", "Critically Endangered", "Extinct")) +
+  theme(legend.title = element_text(size = 16), legend.text = element_text(size = 14), legend.position = "bottom")
+leg <- cowplot::get_legend(leg)
+
+grid.arrange(p1, p5, p3, p4, leg, nrow = 3, ncol=2, layout_matrix = cbind(c(5,1,3), c(5,2,4)), heights = c(1,4,4))
+
 
 #############
 # SANDBOX #
