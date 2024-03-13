@@ -32,9 +32,10 @@ NoEXorTr_tt <- as.matrix(read.csv("../Data/NoEXorThreatened_TransitionTables.csv
 NoTr_tt <- as.matrix(read.csv("../Data/NoThreatened_TransitionTables.csv", header = T)[,2:7])
 NoRecover_tt <- as.matrix(read.csv("../Data/Norecovery_transitiontable.csv", header = T)[,2:7])
 Standard_tt <- as.matrix(read.csv("../Data/Standard_TransitionTables.csv", header = T)[,2:7])
+TenthExtinct_tt <- as.matrix(read.csv("../Data/TenthExtinct_TransitionTables.csv", header = T))
 
-scenarios <- list(NoEX_tt, NoEXorTr_tt, NoTr_tt, NoRecover_tt, Standard_tt)
-scenario_names <- c("NoEX_tt", "NoEXorTr_tt", "NoTr_tt", "NoRecover_tt", "Standard_tt")
+scenarios <- list( Standard_tt, NoEX_tt, NoTr_tt, NoEXorTr_tt, NoRecover_tt)
+scenario_names <- c("Standard_tt","NoEX_tt", "NoTr_tt", "NoEXorTr_tt", "NoRecover_tt")
 
 ## FUNCTIONS ##
 
@@ -351,7 +352,6 @@ leg <- ggplot(data = BAU_OT, aes(Time, Value, colour = ThreatLevel)) + geom_line
 leg <- cowplot::get_legend(leg)
 
 grid.arrange(p1, p5, p3, p4, leg, nrow = 3, ncol=2, layout_matrix = cbind(c(5,1,3), c(5,2,4)), heights = c(1,4,4))
-
 
 #############
 # SANDBOX #
