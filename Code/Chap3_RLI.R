@@ -294,16 +294,24 @@ calcWeightingsGBF2100 <- function(clade = "Bird", clade_props = Bird_RLI, scenar
   # years til 2050
   timeDiff <- 2050-maxYear
   # years til next multiple of 10
-  next10 <- 10 - (timeDiff %% 10)
+  next10 <- (timeDiff %% 10)
+  maxYearRLI <- maxYearProps * c(0,1,2,3,4,5)
+  maxYearRLI <- (total-sum(maxYearRLI))/total
+  propsOT <- data.frame(clade = clade, year = maxYear, scenario = "Standard_tt", value = maxYearRLI)
+  
   for(i in seq(next10, timeDiff, 10)){
-    
+    tempProps <- predict_movements(props = as.numeric(maxYearProps), scenarios = list(Standard_tt), time = i)
+    tempProps <- tempProps[,1:6]
+    #convert to weighted values
+    tempProps <- sweep(tempProps, 2, c(0,1,2,3,4,5), "*")
+    #calculate Index value
+    tempProps <- (total-rowSums(tempProps))/total
+    propsOT <- rbind(propsOT, data.frame(clade = clade, year = maxYear+i, scenario = "Standard_tt", value = tempProps))
   }
-  
-  
   #get proportions at 2050 for BAU
   props2050 <- calcRLI(clade = clade, clade_props = clade_props, years = timeDiff)
   RLI2050 <- as.numeric(calcWeightingsPredict2050(clade, clade_props)[[1]])[1]
-  propsOT <- data.frame(clade = clade, year = 2050, scenario = scenario_names, value = RLI2050)
+  propsOT <- rbind(propsOT,data.frame(clade = clade, year = 2050, scenario = scenario_names, value = RLI2050))
   # grab at every 10 years
   for(i in seq(10,50,10)){
     tempProps <- predict_movements(props = as.numeric(props2050), scenarios = scenarios, time = i)
@@ -373,7 +381,7 @@ names(All_RLIpredict)[3] <- "Index"
 
 formatCalcWeightings <- function(clade, clade_props){
   GBFdf<- calcWeightingsGBF2100(clade, clade_props)
-  GBFdf[which(GBFdf$scenario=="Standard_tt"),"scenario"] <- "BAU"
+  #GBFdf[which(GBFdf$scenario=="Standard_tt"),"scenario"] <- "BAU"
   GBFdf$year <- as.numeric(GBFdf$year)
   names(GBFdf)[4] <- "Index"
   All_RLIpredict <- rbind(All_RLIpredict, GBFdf)
@@ -396,10 +404,11 @@ All_RLIpredict <- formatCalcWeightings("Amphibian", Amphib_RLI)
 #Cycad
 All_RLIpredict <- formatCalcWeightings("Cycad", Cycad_RLI)
 
-All_RLIpredict[which(All_RLIpredict$year <2025),"scenario"] <- "RLI"
-RLIyears <- All_RLIpredict[which(All_RLIpredict$year <2025),]
-RLIyears <- RLIyears %>% group_by(clade) %>% filter(year == max(year)) %>% mutate(scenario = "BAU")
-All_RLIpredict <- rbind(All_RLIpredict, RLIyears)
+All_RLIpredict[which(All_RLIpredict$scenario == "BAU"),"scenario"] <- "RLI"
+All_RLIpredict[which(All_RLIpredict$scenario == "Standard_tt"),"scenario"] <- "BAU"
+#RLIyears <- All_RLIpredict[which(All_RLIpredict$year <2025),]
+#RLIyears <- RLIyears %>% group_by(clade) %>% filter(year == max(year)) %>% mutate(scenario = "BAU")
+#All_RLIpredict <- rbind(All_RLIpredict, RLIyears)
 
 All_RLIpredict$scenario <- factor(All_RLIpredict$scenario, levels = c("RLI", "BAU", "NoEX_tt", "NoTr_tt", "NoEXorTr_tt", "NoRecover_tt"))
 
@@ -409,7 +418,7 @@ All_RLIpredict$scenario <- factor(All_RLIpredict$scenario, levels = c("RLI", "BA
 p <-ggplot(data = All_RLIpredict, aes(x = year, y = Index, group = interaction(scenario,clade))) + 
   geom_line(aes(colour = scenario), linewidth = 1) + geom_point(aes(colour = scenario), size = 1) + 
   scale_colour_manual(values = c("black", "darkcyan", "pink", "orange","darkgreen", "darkred"), 
-                      labels = c("Business as Usual", "No Extinctions",  "Cannot become Threatened", "Cannot become Extinct or Threatened", "Worst Case Scenario")) + 
+                      labels = c("RLI", "Business as Usual", "No Extinctions",  "Cannot become Threatened", "Cannot become Extinct or Threatened", "Worst Case Scenario")) + 
   scale_x_continuous(breaks = seq(1980, 2100, 10)) + ylim(0.4,1) + labs(colour = "RLI", shape = "RLI") + 
   geom_vline(xintercept = 2050, linetype="dotted") +
   labs(y = "Index Value", x = "Year", colour = "Scenario") +
