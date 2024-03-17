@@ -34,6 +34,8 @@ names(Overall_probs_full) <- c("category", "Top", "Bottom")
 Overall_probs <- Overall_probs %>% left_join(Overall_probs_full, by = "category")
 Overall_probs[which(Overall_probs$category=="EX"), c("Top", "Bottom")] <- 1
 
+Overall_probs[,2:5] <- sapply(Overall_probs[,2:5], as.numeric)
+
 ###### FUNCTIONS ######
 
 Edit_codes <- function(RLI_data){
@@ -78,9 +80,9 @@ Bird_RLI <- read.csv("../Data/Bird_RLI_original.csv", stringsAsFactors = T)
 
 # Format the Bird RLI data for modelling
 Format_BirdRLI <- function(Bird_RLI){
-  Bird_RLI <- Bird_RLI[,2:10]
+  Bird_RLI <- Bird_RLI[,c(2, 4:10)]
   # rename columns
-  names(Bird_RLI) <- c("binomial", "taxonid", "1988", "1994", "2000","2004","2008","2012","2016")
+  names(Bird_RLI) <- c("binomial", "1988", "1994", "2000","2004","2008","2012","2016")
   # pivot to long formatting
   Bird_RLI <- pivot_longer(Bird_RLI, cols = c("1988", "1994", "2000","2004","2008","2012","2016")
                            , names_to = "year", values_to = "category")
@@ -94,38 +96,6 @@ Bird_RLI <- Edit_codes(Bird_RLI)
 
 
 ################################
-
-## Either old code or broken code or something? Unsure.
-
-# # Add extinction risks to rli data
-# Bird_RLI <- Bird_RLI %>% mutate(Overall_PEX_weighting = Overall_PEX[as.character(category)])
-# 
-# 
-# # Calculate weightings for various types
-# Bird_RLI <- Bird_RLI %>% mutate(RLI_Weighting = case_when(category=="LC" ~ 0, 
-#                 category=="NT" ~ 1, category=="VU" ~ 2, category=="EN" ~ 3,
-#                 category== "CR" ~ 4, category == "EX" ~ 5))
-# 
-# # Using the values from the Bird RLI modelling
-# Bird_RLI <- Bird_RLI %>% mutate(Birds_PEX = case_when(category=="LC" ~ 0.00051, 
-#                 category=="NT" ~ 0.0051, category=="VU" ~ 0.016, category=="EN" ~ 0.035,
-#                 category== "CR" ~ 0.089, category == "EX" ~ 1))
-# 
-# Max_value_RLI <- nrow(Bird_RLI[which(Bird_RLI$year==min(Bird_RLI$year)),])*5
-# Max_value <- nrow(Bird_RLI[which(Bird_RLI$year==min(Bird_RLI$year)),])
-# 
-# #get RLI values using different weightings
-# RLI_weightings <- Bird_RLI %>% group_by(year) %>% summarise(RLI_value <- (Max_value_RLI - sum(RLI_Weighting))/Max_value_RLI)
-# Bird_PEX_weightings <- Bird_RLI %>% group_by(year) %>% summarise(PEX_birds_value <- (Max_value - sum(Birds_PEX))/Max_value)
-# Overall_PEX_weightings <-Bird_RLI %>% group_by(year) %>% summarise(PEX_overall_value <- (Max_value - sum(Overall_PEX_weighting))/Max_value)
-# names(RLI_weightings) <- c("Year", "Category")
-# names(Bird_PEX_weightings) <- c("Year", "Category")
-# names(Overall_PEX_weightings) <- c("Year", "Category")
-# RLI_values <- bind_rows(RLI_weightings, Bird_PEX_weightings,Overall_PEX_weightings, .id = "id")
-#  
-# ggplot(data = RLI_values, aes(x = Year, y = Category, fill = id)) + geom_point(aes(shape=id, colour = id)) +geom_line(aes(colour = id))
-
-#############
 
 ##### Mammal ####
 
@@ -188,13 +158,13 @@ Cycad <- Calc_weightings(Cycad_RLI)
 
 All_RLI <- bind_rows("Mammal" = Mammal, "Bird" = Bird, "Amphibian" = Amphibian, "Cycad" = Cycad, .id = "clade")
 
-ggplot(data = All_RLI[which(All_RLI$id=="Bates"),], aes(x = year, y = category)) + 
-  geom_point(aes(shape=clade, colour = clade)) +geom_line(aes(colour = clade)) +
-  ylim(0,1) + labs (colour = "Bates", shape = "Bates")
-
-ggplot(data = All_RLI[which(All_RLI$id=="RLI"),], aes(x = year, y = category)) + 
-  geom_point(aes(shape=clade, colour = clade)) +geom_line(aes(colour = clade)) +
-  ylim(0,1) + labs(colour = "RLI", shape = "RLI")
+# ggplot(data = All_RLI[which(All_RLI$id=="Bates"),], aes(x = year, y = category)) + 
+#   geom_point(aes(shape=clade, colour = clade)) +geom_line(aes(colour = clade)) +
+#   ylim(0,1) + labs (colour = "Bates", shape = "Bates")
+# 
+# ggplot(data = All_RLI[which(All_RLI$id=="RLI"),], aes(x = year, y = category)) + 
+#   geom_point(aes(shape=clade, colour = clade)) +geom_line(aes(colour = clade)) +
+#   ylim(0,1) + labs(colour = "RLI", shape = "RLI")
 
 ggplot(data = All_RLI, aes(x = year, y = category, group = interaction(id, clade))) + 
   geom_ribbon(aes(ymin=min, ymax=max, alpha = 0.3), colour = "grey", fill = "lightgrey", linetype = 2, show.legend = FALSE)+
@@ -225,7 +195,7 @@ RLI_slope <- spread(RLI_slope, Clade, Gradient)
 RLI_predict<-All_RLI[which(All_RLI$id=="RLI"),c(1,3,4)]
 
 ## Scenario to 2050 then BAU
-calcWeightingsPredict2050 <- function(clade = "Bird", clade_props = Bird_RLI){
+calcWeightingsPredict2050 <- function(clade = "Bird", clade_props = Bird_RLI, RLIweight = Overall_probs$RLI_weighting){
   # grab the max year
   maxYear <- max(RLI_predict[which(RLI_predict$clade == clade), "year"])
   maxYearProps <- table(clade_props[which(clade_props$year==maxYear),"category"])
@@ -233,11 +203,11 @@ calcWeightingsPredict2050 <- function(clade = "Bird", clade_props = Bird_RLI){
   timeDiff <- 2050-maxYear
   props2050 <- predict_movements(props = maxYearProps, scenarios = scenarios, time = timeDiff) # predict to 2050
   # grab max RLI value
-  total = props2050$tot[1]*5
+  total = props2050$tot[1]*max(RLIweight)
   #remove total column
   props2050<-props2050[,1:6]
   # convert to weightings
-  props2050 <- sweep(props2050, 2, c(0,1,2,3,4,5), "*")
+  props2050 <- sweep(props2050, 2, RLIweight, "*")
   # calc values
   props2050 <- (total - rowSums(props2050))/total
   propsAll<- rbind(data.frame(clade = clade, year = "2050", scenario = scenario_names, value = props2050),
@@ -275,6 +245,8 @@ print(xtable(spread(Bird_2050_all, year, value),display = c("d", "s", "s", "G", 
 ## BAU to 2050 then scenario
 ## GBF
 
+#grabs the proportions of species in each category, at a given point in the future, given a list of
+#scenarios. Uses calculated proportions from the last year of the RLI
 calcRLI <- function(clade = "Bird", clade_props = Bird_RLI, years=10, scenarios = list(Standard_tt)){
   # grab the max year
   maxYear <- max(RLI_predict[which(RLI_predict$clade == clade), "year"])
@@ -284,18 +256,22 @@ calcRLI <- function(clade = "Bird", clade_props = Bird_RLI, years=10, scenarios 
   return(futureProps[1:6])
 }
 
+
 ## BAU to 2050 then scenarios to 2100
-calcWeightingsGBF2100 <- function(clade = "Bird", clade_props = Bird_RLI, scenarios = list(Standard_tt, NoEX_tt, NoTr_tt, NoEXorTr_tt, NoRecover_tt)){
+calcWeightingsGBF2100 <- function(clade = "Bird", 
+                                  clade_props = Bird_RLI, 
+                                  scenarios = list(Standard_tt, NoEX_tt, NoTr_tt, NoEXorTr_tt, NoRecover_tt), 
+                                  RLIweight = Overall_probs$RLI_weighting){
   # grab the max year
   maxYear <- max(RLI_predict[which(RLI_predict$clade == clade), "year"])
   maxYearProps <- table(clade_props[which(clade_props$year==maxYear),"category"])
   maxYearProps <- as.numeric(maxYearProps[order(factor(names(maxYearProps), levels = Categories))])[1:6]
-  total = sum(maxYearProps)*5
+  total = sum(maxYearProps)*max(RLIweight)
   # years til 2050
   timeDiff <- 2050-maxYear
   # years til next multiple of 10
   next10 <- (timeDiff %% 10)
-  maxYearRLI <- maxYearProps * c(0,1,2,3,4,5)
+  maxYearRLI <- maxYearProps * RLIweight
   maxYearRLI <- (total-sum(maxYearRLI))/total
   propsOT <- data.frame(clade = clade, year = maxYear, scenario = "Standard_tt", value = maxYearRLI)
   
@@ -303,21 +279,21 @@ calcWeightingsGBF2100 <- function(clade = "Bird", clade_props = Bird_RLI, scenar
     tempProps <- predict_movements(props = as.numeric(maxYearProps), scenarios = list(Standard_tt), time = i)
     tempProps <- tempProps[,1:6]
     #convert to weighted values
-    tempProps <- sweep(tempProps, 2, c(0,1,2,3,4,5), "*")
+    tempProps <- sweep(tempProps, 2, RLIweight, "*")
     #calculate Index value
     tempProps <- (total-rowSums(tempProps))/total
     propsOT <- rbind(propsOT, data.frame(clade = clade, year = maxYear+i, scenario = "Standard_tt", value = tempProps))
   }
   #get proportions at 2050 for BAU
   props2050 <- calcRLI(clade = clade, clade_props = clade_props, years = timeDiff)
-  RLI2050 <- as.numeric(calcWeightingsPredict2050(clade, clade_props)[[1]])[1]
+  RLI2050 <- as.numeric(calcWeightingsPredict2050(clade, clade_props, RLIweight = RLIweight)[[1]])[1]
   propsOT <- rbind(propsOT,data.frame(clade = clade, year = 2050, scenario = scenario_names, value = RLI2050))
   # grab at every 10 years
   for(i in seq(10,50,10)){
     tempProps <- predict_movements(props = as.numeric(props2050), scenarios = scenarios, time = i)
     tempProps <- tempProps[,1:6]
     #convert to weighted values
-    tempProps <- sweep(tempProps, 2, c(0,1,2,3,4,5), "*")
+    tempProps <- sweep(tempProps, 2, RLIweight, "*")
     #calculate Index value
     tempProps <- (total-rowSums(tempProps))/total
     propsOT <- rbind(propsOT, data.frame(clade = clade, year = 2050+i, scenario = scenario_names, value = tempProps))
@@ -325,7 +301,7 @@ calcWeightingsGBF2100 <- function(clade = "Bird", clade_props = Bird_RLI, scenar
   return(propsOT)
 }
 
-test <- calcWeightingsGBF2100("Mammal", Mammal_RLI)
+test <- calcWeightingsGBF2100("Mammal", Mammal_RLI, RLIweight = as.numeric(Overall_probs$Bates_pex))
 
 BirdStd2050<-as.numeric(Bird_props[5,])
 Bird2100<- predict_movements(props = BirdStd2050, scenarios = scenarios, time =50)
@@ -379,8 +355,8 @@ All_RLIpredict <- All_RLI[which(All_RLI$id=="RLI"),c(1,3,4)]
 All_RLIpredict$scenario <- "BAU"
 names(All_RLIpredict)[3] <- "Index"
 
-formatCalcWeightings <- function(clade, clade_props){
-  GBFdf<- calcWeightingsGBF2100(clade, clade_props)
+formatCalcWeightings <- function(clade, clade_props, RLIweight = Overall_probs$RLI_weighting){
+  GBFdf<- calcWeightingsGBF2100(clade, clade_props, RLIweight= RLIweight)
   #GBFdf[which(GBFdf$scenario=="Standard_tt"),"scenario"] <- "BAU"
   GBFdf$year <- as.numeric(GBFdf$year)
   names(GBFdf)[4] <- "Index"
@@ -390,13 +366,6 @@ formatCalcWeightings <- function(clade, clade_props){
 
 #Birds
 All_RLIpredict <- formatCalcWeightings("Bird", Bird_RLI)
-# Bird_GBF[which(Bird_GBF$scenario == "Standard_tt"),"scenario"] <- "BAU"
-# Bird_GBF$year <- as.numeric(Bird_GBF$year)
-# names(Bird_GBF)[4] <- "Index"
-# Bird_GBF <- Bird_GBF[which(Bird_GBF$year != "2016"),]
-# 
-# All_RLIpredict <- rbind(All_RLIpredict, Bird_GBF)
-
 #Mammals
 All_RLIpredict <- formatCalcWeightings("Mammal", Mammal_RLI)
 # Amphib
@@ -431,13 +400,20 @@ p <-ggplot(data = All_RLIpredict, aes(x = year, y = Index, group = interaction(s
 
 p + facet_wrap(~clade)
 
-# ggplot(data = RLI_predict, aes(x = year, y = category, group= clade)) + 
-#   geom_point(aes(colour=clade), size = 3, shape = 18) + #scale_shape_manual(values = c(16, 17, 15, 8)) +
-#   geom_line(linewidth = 1, aes(colour = clade)) + scale_x_continuous(breaks = seq(1980, 2020, 5)) +
-#   ylim(0.5,1) + labs(colour = "RLI", shape = "RLI") + labs(y = "Index Value/\nSurvival Probability (t=100)", x = "Year") +
-#   theme(panel.grid.major = element_blank(), panel.background = element_blank(), 
-#         panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), 
-#         axis.line.x = element_line(colour = "black"), axis.text.y = element_text(size=16), 
-#         axis.title = element_text(size=20), axis.text.x = element_text(size=16, colour = c("black", NA)), 
-#         legend.position = "right", legend.text = element_text(size=12), 
-#         legend.title = element_text(size=14), strip.text = element_text(size=14))
+### plotting with different weightings shouuuld just be as so:
+
+All_RLIpredict <- All_RLI[which(All_RLI$id=="Bates"),c(1,3,4)]
+All_RLIpredict$scenario <- "BAU"
+names(All_RLIpredict)[3] <- "Index"
+
+#Birds
+All_RLIpredict <- formatCalcWeightings("Bird", Bird_RLI, RLIweight = as.numeric(Overall_probs$Bates_pex))
+#Mammals
+All_RLIpredict <- formatCalcWeightings("Mammal", Mammal_RLI, RLIweight = Overall_probs$Bates_pex)
+# Amphib
+All_RLIpredict <- formatCalcWeightings("Amphibian", Amphib_RLI, RLIweight = Overall_probs$Bates_pex)
+#Cycad
+All_RLIpredict <- formatCalcWeightings("Cycad", Cycad_RLI, RLIweight = Overall_probs$Bates_pex)
+
+All_RLIpredict[which(All_RLIpredict$scenario == "BAU"),"scenario"] <- "RLI"
+All_RLIpredict[which(All_RLIpredict$scenario == "Standard_tt"),"scenario"] <- "BAU"
