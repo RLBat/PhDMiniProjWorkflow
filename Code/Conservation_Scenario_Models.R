@@ -287,6 +287,36 @@ ConSceAll[,c(2:7)] <- round(ConSceAll[,c(2:7)])
 ConSceCond <- ConSceAll %>% mutate(NotThreat = LC + NT) %>% mutate(Threat = VU + EN + CR)
 ConSceCond <- ConSceCond[,c(1,8,9,7)]
 
+BAU <- ConSceCond[1,-1]
+ConSceCond[,-1] <- sapply(ConSceCond[,-1],as.numeric)
+
+ConSceComp <- cbind(ConSceCond[,1],sweep(ConSceCond[,-1], 2, BAU))
+ConSceComp<- ConSceComp[-1,]
+ConSceComp <- ConSceComp[c(9:12,1:8),]
+allSce <- ConSceComp[,1]
+ConSceComp[,1] <- factor(ConSceComp[,1], levels = allSce)
+
+# get table
+print(xtable(ConSceComp, display = c("d", "s", "d", "d","d")), include.rownames = FALSE)
+
+# Plot as bars
+
+ConSceComp <- gather(ConSceComp, "Scenario", "Change", NotThreat, Threat, EX)
+names(ConSceComp) <- c("Scenario", "ThreatLvl", "Change")
+ConSceComp[,2] <- factor(ConSceComp[,2], levels = c("NotThreat", "Threat", "EX") )
+
+ggplot(ConSceComp, aes(x = Scenario, y = Change, fill = ThreatLvl)) + geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("darkcyan", "darkorange", "darkred"), labels = c("LC & NT", "VU, EN, & CR", "EX")) + #coord_flip() +
+  geom_hline(yintercept = 0)+ scale_y_continuous(breaks = seq(-2000,2000,500)) +
+  labs(y = "Difference in number of species per category by 2050\ncompared to Business as Usual predictions" , x="", fill = "Red List Category") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), panel.grid.minor = element_blank(), 
+        axis.line.y = element_line(colour = "black"), axis.line.x = element_line(colour = "black"),
+        axis.text.y = element_text(size=16), axis.text.x = element_text(size = 14, angle = 70, hjust = 1),
+        axis.title.y = element_text(size = 20), legend.position = "right", legend.text = element_text(size=14), 
+        legend.title = element_text(size=16), strip.text = element_text(size=14),
+        plot.title = element_text(size = 18, hjust = 6, vjust = -3))
+
+
 ####
 # Plot Over Time
 
