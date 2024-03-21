@@ -39,7 +39,7 @@ Overall_probs[,2:5] <- sapply(Overall_probs[,2:5], as.numeric)
 ###### FUNCTIONS ######
 
 Edit_codes <- function(RLI_data){
-  RLI_data$category <- recode(RLI_data$category, "CR (PE)" = "CR", "EW" = "EX", "CR(PE)"= "CR", "CR(PEW)"= "CR")
+  RLI_data$category <- recode(RLI_data$category, "CR (PE)" = "EX", "EW" = "EX", "CR(PE)"= "EX", "CR(PEW)"= "EX")
   RLI_data <- filter(RLI_data, RLI_data$category!= "DD")
 }
 
@@ -127,11 +127,11 @@ Cycad_RLI<- Edit_codes(Cycad_RLI)
 
 ################
 
-## Corals ##
-
-Coral_RLI <- read.csv("../Data/RLI/Coral_RLI_data.csv", stringsAsFactors = T)
-
-Coral_RLI <- Coral_RLI[,c(2,5,7)]
+# ## Corals ##
+# 
+# Coral_RLI <- read.csv("../Data/RLI/Coral_RLI_data.csv", stringsAsFactors = T)
+# 
+# Coral_RLI <- Coral_RLI[,c(2,5,7)]
 
 #################
 
@@ -261,7 +261,8 @@ calcRLI <- function(clade = "Bird", clade_props = Bird_RLI, years=10, scenarios 
 calcWeightingsGBF2100 <- function(clade = "Bird", 
                                   clade_props = Bird_RLI, 
                                   scenarios = list(Standard_tt, NoEX_tt, NoTr_tt, NoEXorTr_tt, NoRecover_tt), 
-                                  RLIweight = Overall_probs$RLI_weighting){
+                                  RLIweight = Overall_probs$RLI_weighting,
+                                  scenario_names){
   # grab the max year
   maxYear <- max(RLI_predict[which(RLI_predict$clade == clade), "year"])
   maxYearProps <- table(clade_props[which(clade_props$year==maxYear),"category"])
@@ -355,8 +356,12 @@ All_RLIpredict <- All_RLI[which(All_RLI$id=="RLI"),c(1,3,4)]
 All_RLIpredict$scenario <- "BAU"
 names(All_RLIpredict)[3] <- "Index"
 
-formatCalcWeightings <- function(clade, clade_props, RLIweight = Overall_probs$RLI_weighting){
-  GBFdf<- calcWeightingsGBF2100(clade, clade_props, RLIweight= RLIweight)
+formatCalcWeightings <- function(clade, 
+                                 clade_props, 
+                                 scenarios = list(Standard_tt, NoEX_tt, NoTr_tt, NoEXorTr_tt, NoRecover_tt), 
+                                 RLIweight = Overall_probs$RLI_weighting,
+                                 scenario_names){
+  GBFdf<- calcWeightingsGBF2100(clade, clade_props, scenarios = scenarios, RLIweight= RLIweight, scenario_names)
   #GBFdf[which(GBFdf$scenario=="Standard_tt"),"scenario"] <- "BAU"
   GBFdf$year <- as.numeric(GBFdf$year)
   names(GBFdf)[4] <- "Index"
@@ -417,3 +422,208 @@ All_RLIpredict <- formatCalcWeightings("Cycad", Cycad_RLI, RLIweight = Overall_p
 
 All_RLIpredict[which(All_RLIpredict$scenario == "BAU"),"scenario"] <- "RLI"
 All_RLIpredict[which(All_RLIpredict$scenario == "Standard_tt"),"scenario"] <- "BAU"
+All_RLIpredict$scenario <- factor(All_RLIpredict$scenario, levels = c("RLI", "BAU", "NoEX_tt", "NoTr_tt", "NoEXorTr_tt", "NoRecover_tt"))
+
+
+#####################################
+### other conservation scenarios:
+
+## uncertainty??
+
+ConScePredict <- list(Standard_tt, HalfUpThreat, DoubleDownThreat, NoRecover_tt)
+ConSce_names <- c("Standard_tt", "HalfUpThreat", "DoubleDownThreat", "NoRecover")
+
+All_RLIpredict <- All_RLI[which(All_RLI$id=="RLI"),c(1,3,4)]
+All_RLIpredict$scenario <- "BAU"
+names(All_RLIpredict)[3] <- "Index"
+
+#Birds
+All_RLIpredict <- formatCalcWeightings("Bird", Bird_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$RLI_weighting, scenario_names = ConSce_names)
+#Mammals
+All_RLIpredict <- formatCalcWeightings("Mammal", Mammal_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$RLI_weighting, scenario_names = ConSce_names)
+# Amphib
+All_RLIpredict <- formatCalcWeightings("Amphibian", Amphib_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$RLI_weighting, scenario_names = ConSce_names)
+#Cycad
+All_RLIpredict <- formatCalcWeightings("Cycad", Cycad_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$RLI_weighting, scenario_names = ConSce_names)
+
+All_RLIpredict[which(All_RLIpredict$scenario == "BAU"),"scenario"] <- "RLI"
+All_RLIpredict[which(All_RLIpredict$scenario == "Standard_tt"),"scenario"] <- "BAU"
+All_RLIpredict$scenario <- factor(All_RLIpredict$scenario, levels = c("RLI", "BAU", ConSce_names[-1]))
+
+## swap to faceting for clade or it'll be a mess
+p <-ggplot(data = All_RLIpredict, aes(x = year, y = Index, group = interaction(scenario,clade))) + 
+  geom_line(aes(colour = scenario), linewidth = 1) + geom_point(aes(colour = scenario), size = 1) + 
+  scale_colour_manual(values = c("black", "darkcyan", "pink", "orange", "darkred"), 
+                      labels = c("RLI", "BAU", ConSce_names[-1])) + 
+  scale_x_continuous(breaks = seq(1980, 2100, 10)) + ylim(0.4,1) + labs(colour = "RLI", shape = "RLI") + 
+  geom_vline(xintercept = 2050, linetype="dotted") +
+  labs(y = "Index Value", x = "Year", colour = "Scenario") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), 
+        axis.line.x = element_line(colour = "black"), axis.text.y = element_text(size=16), 
+        axis.title = element_text(size=20), axis.text.x = element_text(size=16, colour = c("black", NA)), 
+        legend.position = "top", legend.text = element_text(size=12), 
+        legend.title = element_text(size=14), strip.text = element_text(size=14))
+
+p + facet_wrap(~clade)
+
+All_RLIpredict <- All_RLI[which(All_RLI$id=="Bates"),c(1,3,4)]
+All_RLIpredict$scenario <- "BAU"
+names(All_RLIpredict)[3] <- "Index"
+
+#Birds
+All_RLIpredict <- formatCalcWeightings("Bird", Bird_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$Bates_pex, scenario_names = ConSce_names)
+#Mammals
+All_RLIpredict <- formatCalcWeightings("Mammal", Mammal_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$Bates_pex, scenario_names = ConSce_names)
+# Amphib
+All_RLIpredict <- formatCalcWeightings("Amphibian", Amphib_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$Bates_pex, scenario_names = ConSce_names)
+#Cycad
+All_RLIpredict <- formatCalcWeightings("Cycad", Cycad_RLI, scenarios = ConScePredict, RLIweight = Overall_probs$Bates_pex, scenario_names = ConSce_names)
+
+All_RLIpredict[which(All_RLIpredict$scenario == "BAU"),"scenario"] <- "RLI"
+All_RLIpredict[which(All_RLIpredict$scenario == "Standard_tt"),"scenario"] <- "BAU"
+All_RLIpredict$scenario <- factor(All_RLIpredict$scenario, levels = c("RLI", "BAU", ConSce_names[-1]))
+
+## swap to faceting for clade or it'll be a mess
+p <-ggplot(data = All_RLIpredict, aes(x = year, y = Index, group = interaction(scenario,clade))) + 
+  geom_line(aes(colour = scenario), linewidth = 1) + geom_point(aes(colour = scenario), size = 1) + 
+  scale_colour_manual(values = c("black", "darkcyan", "pink", "orange","darkred"), 
+                      labels = c("RLI", "BAU", ConSce_names[-1])) + 
+  scale_x_continuous(breaks = seq(1980, 2100, 10)) + ylim(0.8,1) + labs(colour = "RLI", shape = "RLI") + 
+  geom_vline(xintercept = 2050, linetype="dotted") +
+  labs(y = "Survival Probability (t=100)", x = "Year", colour = "Scenario") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), 
+        axis.line.x = element_line(colour = "black"), axis.text.y = element_text(size=16), 
+        axis.title = element_text(size=20), axis.text.x = element_text(size=16, colour = c("black", NA)), 
+        legend.position = "top", legend.text = element_text(size=12), 
+        legend.title = element_text(size=14), strip.text = element_text(size=14))
+
+p + facet_wrap(~clade)
+
+#############################
+
+## testing different weights
+
+Birds100 <- read.csv("../Data/Birds4way100.csv", header = TRUE)
+Birds100$Threat_level <- factor(Birds100$Threat_level, levels = Categories)
+birdWeightCats <- unique(Birds100$Data)
+Birds100 <- spread(Birds100, Data, Probability)
+Birds100low <- Birds100[which(Birds100$Source=="Bottom"),]
+Birds100high <- Birds100[which(Birds100$Source=="Top"),]
+Birds100 <- Birds100[which(Birds100$Source=="Median"),]
+#Birds100 <- pivot_wider(Birds100, id_cols = c("Threat_level"), names_from = c("Data", "Source"), values_from = Probability)
+formatbirdcats <- function(Birds100){
+  Birds100 <- Birds100[,-1]
+  names(Birds100)<- c("category", "RLICRweight", "RLIEXweight", "T7weight", "noT7weight")
+  Birds100 <- rbind(Birds100, c("EX", 1,1,1,1))
+  return(Birds100)
+}
+
+Birds100 <- formatbirdcats(Birds100)
+Birds100low <- formatbirdcats(Birds100low)
+Birds100high <- formatbirdcats(Birds100high)
+
+Birds100$Batespex <- Overall_probs$Bates_pex
+Birds100high$Batespex <- Overall_probs$Top
+Birds100low$Batespex <- Overall_probs$Bottom
+
+Calc_weightings_extend <- function(RLI_data, weightings){
+  # generate the max values
+  Max_value <- length(unique(RLI_data$binomial)) # Bates pEX
+  # Add weightings to df
+  RLI_data$category <- as.character(RLI_data$category)
+  RLI_data <- RLI_data %>% left_join(weightings, by = "category")
+  # force numeric
+  RLI_data[,c(4:max(ncol(RLI_data)))] <- sapply(RLI_data[,c(4:max(ncol(RLI_data)))],as.numeric)
+  # Calculate Index values for each year
+  noT7 <- RLI_data %>% group_by(year) %>% summarise((Max_value - sum(noT7weight))/Max_value)
+  T7 <- RLI_data %>% group_by(year) %>% summarise((Max_value - sum(T7weight))/Max_value)
+  RLICR <- RLI_data %>% group_by(year) %>% summarise((Max_value -sum(RLICRweight))/Max_value)
+  RLIEX <- RLI_data %>% group_by(year) %>% summarise((Max_value -sum(RLIEXweight))/Max_value)
+  Bates <- RLI_data %>% group_by(year) %>% summarise((Max_value -sum(Batespex))/Max_value)
+  names(noT7) <- c("year", "category")
+  names(T7) <- c("year", "category")
+  names(RLICR) <- c("year", "category")
+  names(RLIEX) <- c("year", "category")
+  names(Bates) <- c("year", "category")
+  RLI_values <- bind_rows("noT7" = noT7, "T7" = T7, "RLICR" = RLICR, "RLIEX" = RLIEX, "Bates" = Bates, .id = "id")
+  return(RLI_values)
+}
+
+# Calc_weightings_extend <- function(RLI_data, weightings){
+#   # generate the max values
+#   Max_value <- length(unique(RLI_data$binomial)) # Bates pEX
+#   # Add weightings to df
+#   RLI_data$category <- as.character(RLI_data$category)
+#   RLI_data <- RLI_data %>% left_join(weightings, by = "category")
+#   # force numeric
+#   RLI_data[,c(4:max(ncol(RLI_data)))] <- sapply(RLI_data[,c(4:max(ncol(RLI_data)))],as.numeric)
+#   RLI_values <- data.frame("id"=NA, "year"=NA, "category"=NA)[0,]
+#   # Calculate Index values for each year
+#   for(i in 4:max(ncol(RLI_data))){
+#     placehold <- RLI_data %>% group_by(year) %>% summarise((Max_value-sum(.[[i]]))/Max_value)
+#   }
+#   noT7 <- RLI_data %>% group_by(year) %>% summarise((Max_value - sum(noT7weight))/Max_value)
+#   T7 <- RLI_data %>% group_by(year) %>% summarise((Max_value_RLI - sum(T7weight))/Max_value_RLI)
+#   RLICR <- RLI_data %>% group_by(year) %>% summarise((Max_value -sum(RLICRweight))/Max_value)
+#   RLIEX <- RLI_data %>% group_by(year) %>% summarise((Max_value -sum(RLIEXweight))/Max_value)
+#   names(PEX) <- c("year", "category")
+#   names(RLI) <- c("year", "category")
+#   names(CritE) <- c("year", "category")
+#   RLI_values <- bind_rows("Bates" = PEX, "RLI" = RLI, "CritE" = CritE, .id = "id")
+#   return(RLI_values)
+# }
+
+birdCompare <- Calc_weightings_extend(Bird_RLI, weightings = Birds100)
+birdCompare$position <- "median"
+tempBird <- Calc_weightings_extend(Bird_RLI, weightings = Birds100low)
+tempBird$position <- "bottom"
+birdCompare <- rbind(birdCompare, tempBird)
+tempBird <- Calc_weightings_extend(Bird_RLI, weightings = Birds100high)
+tempBird$position <- "top"
+birdCompare <- rbind(birdCompare, tempBird)
+birdCompare$id <- factor(birdCompare$id, levels = c("RLICR", "RLIEX", "T7", "noT7", "Bates"))
+birdCompare<- spread(birdCompare,position, category)
+
+ggplot(data = birdCompare, aes(x = year, y = median, group = id)) + 
+  geom_ribbon(aes(ymin=bottom, ymax=top, alpha = 0.3), colour = "grey", fill = "lightgrey", linetype = 2, show.legend = FALSE)+
+  geom_line(aes(colour = id), linewidth = 1) + geom_point(aes(colour = id), size = 2) + 
+  scale_colour_manual(values = c("darkcyan", "orange","darkred", "green4", "black"), 
+                      labels = c("RLI data with CR(PEX) treated as CR", "RLI data with CR(PEX) treated as EX",
+                                 "RL data corrected using Table 7", "RL data without corrections", "Overall data with corrections")) + 
+  scale_x_continuous(breaks = seq(1980, 2020, 5)) +
+  labs(colour = "Data Source") + labs(y = "Survival Probability (t=100)", x = "Year") +
+  theme(plot.margin=unit(c(0.5,0.5,0.5,0.5),"cm"))+
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), 
+        axis.line.x = element_line(colour = "black"), axis.text.y = element_text(size=16), 
+        axis.title = element_text(size=20), axis.text.x = element_text(size=16, colour = c("black")), 
+        axis.title.x = element_text(vjust=-1), axis.title.y = element_text(vjust = 3),
+        legend.position = "top", legend.text = element_text(size=11), 
+        legend.title = element_text(size=12), strip.text = element_text(size=14))+
+  guides(colour=guide_legend(nrow=3,byrow=TRUE))
+
+### Collect Slope values for all clade/id combos ###
+
+RLI_slope <- birdCompare %>% group_by(id) %>% summarise(Gradient <- lm(median ~ year)[[1]][2])
+names(RLI_slope) <- c("Id", "Gradient")
+
+print(xtable(RLI_slope, digits = 3, display = c("d", "s", "g")), include.rownames=FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
