@@ -267,6 +267,7 @@ ConSceAll <- predict_movements(scenarios = list(Standard_tt, DoubleDownAll,
                               HalfUpAll, DoubleDownThreat, HalfUpThreat, 
                               DoubleDownENCR, HalfUpENCR, DoubleDownCR, 
                               HalfUpCR), time = 26)
+#remove total column
 ConSceAll<- ConSceAll[,1:6]
 
 ConSceAll$scenario <- c("Business as usual", "Double Downlisting", "Halve Uplisting", 

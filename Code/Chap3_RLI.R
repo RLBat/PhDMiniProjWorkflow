@@ -360,7 +360,7 @@ formatCalcWeightings <- function(clade,
                                  clade_props, 
                                  scenarios = list(Standard_tt, NoEX_tt, NoTr_tt, NoEXorTr_tt, NoRecover_tt), 
                                  RLIweight = Overall_probs$RLI_weighting,
-                                 scenario_names){
+                                 scenario_names = c("Standard_tt","NoEX_tt", "NoTr_tt", "NoEXorTr_tt", "NoRecover_tt")){
   GBFdf<- calcWeightingsGBF2100(clade, clade_props, scenarios = scenarios, RLIweight= RLIweight, scenario_names)
   #GBFdf[which(GBFdf$scenario=="Standard_tt"),"scenario"] <- "BAU"
   GBFdf$year <- as.numeric(GBFdf$year)
@@ -423,6 +423,23 @@ All_RLIpredict <- formatCalcWeightings("Cycad", Cycad_RLI, RLIweight = Overall_p
 All_RLIpredict[which(All_RLIpredict$scenario == "BAU"),"scenario"] <- "RLI"
 All_RLIpredict[which(All_RLIpredict$scenario == "Standard_tt"),"scenario"] <- "BAU"
 All_RLIpredict$scenario <- factor(All_RLIpredict$scenario, levels = c("RLI", "BAU", "NoEX_tt", "NoTr_tt", "NoEXorTr_tt", "NoRecover_tt"))
+
+## swap to faceting for clade or it'll be a mess
+p <-ggplot(data = All_RLIpredict, aes(x = year, y = Index, group = interaction(scenario,clade))) + 
+  geom_line(aes(colour = scenario), linewidth = 1) + geom_point(aes(colour = scenario), size = 1) + 
+  scale_colour_manual(values = c("black", "darkcyan", "pink", "orange","darkgreen", "darkred"), 
+                      labels = c("RLI", "Business as Usual", "No Extinctions",  "Cannot become Threatened", "Cannot become Extinct or Threatened", "Worst Case Scenario")) + 
+  scale_x_continuous(breaks = seq(1980, 2100, 10)) + ylim(0.8,1) + labs(colour = "RLI", shape = "RLI") + 
+  geom_vline(xintercept = 2050, linetype="dotted") +
+  labs(y = "Survival Probability (t=100)", x = "Year", colour = "Scenario") +
+  theme(panel.grid.major = element_blank(), panel.background = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line.y = element_line(colour = "black"), 
+        axis.line.x = element_line(colour = "black"), axis.text.y = element_text(size=16), 
+        axis.title = element_text(size=20), axis.text.x = element_text(size=16, colour = c("black", NA)), 
+        legend.position = "top", legend.text = element_text(size=12), 
+        legend.title = element_text(size=14), strip.text = element_text(size=14))
+
+p + facet_wrap(~clade)
 
 
 #####################################
